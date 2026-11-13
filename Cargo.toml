@@ -7,8 +7,8 @@ description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/p1mo/sawe"
 readme = "README.md"
-keywords = ["http", "assets", "include", "embed", "dir", "games", "static", "web", "server"]
-categories = ["development-tools", "game-engines", "web-programming", "filesystem"]
+keywords = ["http", "assets", "salvo", "static", "web", "server"]
+categories = ["development-tools", "web-programming", "filesystem"]
 authors = ["p1mo <101986259+p1mo@users.noreply.github.com>"]
 
 [package.metadata.docs.rs]
