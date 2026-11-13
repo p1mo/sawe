@@ -1,0 +1,46 @@
+[package]
+name = "sawe"
+version = "0.1.0"
+edition = "2024"
+
+description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/p1mo/sawe"
+readme = "README.md"
+keywords = ["http", "assets", "include", "embed", "dir", "games", "static", "web", "server"]
+categories = ["development-tools", "game-engines", "web-programming", "filesystem"]
+authors = ["p1mo <101986259+p1mo@users.noreply.github.com>"]
+
+[package.metadata.docs.rs]
+no-default-features = true
+features = [
+  "build",
+  "templates",
+  "google-type-dir",
+]
+
+[features]
+build = [ "uiicons/build" ]
+templates = [ "dep:handlebars", "dep:parking_lot", "dep:globset", "dep:ufs", "dep:uiicons" ]
+google-type-dir = []
+
+[dependencies]
+tracing = "0.1.44"
+thiserror = "2.0.21"
+
+schemars = "1.2.2"
+serde_json = "1.0.152"
+serde = { version = "1.0.229", features = ["derive"] }
+
+handlebars = { version = "6.4.4", optional = true }
+parking_lot = { version = "0.13.0", optional = true }
+globset = { version = "0.4.21", optional = true, features = ["serde1"] }
+
+ufs = { version = "0.1.4", optional = true }
+uiicons = { version = "0.1.6", optional = true, features = ["build"] }
+
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+
+http = "1.5.0"
+rcgen = "0.14.10"
+salvo = { version = "1.1.0", features = ["basic-auth", "oapi", "affix-state", "trailing-slash", "force-https", "size-limiter", "request-id", "rate-limiter", "sse", "quinn", "logging", "timeout"] }
