@@ -1,7 +1,7 @@
 [package]
 name = "sawe"
-version = "0.1.1"
-edition = "2024"
+version = "0.1.2"
+edition = "2021"
 description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/p1mo/sawe"
@@ -24,7 +24,7 @@ default = []
 
 all = [ "docs", "templates", "templates-build", "seo", "seo-google" ]
 
-docs = [ "dep:parking_lot", "dep:globset", "dep:ufs" ]
+docs = [ "dep:handlebars", "dep:parking_lot", "dep:globset", "dep:ufs" ]
 
 templates = [ "dep:handlebars", "dep:parking_lot", "dep:globset", "dep:ufs", "dep:uiicons" ]
 templates-build = [ "dep:uiicons", "uiicons/build" ]

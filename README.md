@@ -18,7 +18,7 @@
 
 `sawe` is a Rust crate built around the [Salvo](https://salvo.rs) web framework. It provides a small server wrapper for TCP and QUIC listeners, plus optional modules for template and asset handling, UI icons, SEO metadata, Schema.org JSON-LD, and OpenAPI documentation.
 
-The crate is feature-gated: the server is available with the default configuration, while templates, documentation, and SEO can be enabled independently. The crate uses the Rust 2024 edition, so use a toolchain that supports it.
+The crate is feature-gated: the server is available with the default configuration, while templates, documentation, and SEO can be enabled independently.
 
 ## Features
 
