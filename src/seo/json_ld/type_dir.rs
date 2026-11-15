@@ -326,46 +326,46 @@ pub enum TypeDirectory {
 
     Custom(String),
 
-    #[cfg(feature = "google-type-dir")]
-    GoogleArticle(GoogleArticle),
-    #[cfg(feature = "google-type-dir")]
-    GoogleBreadcrumb(GoogleBreadcrumb),
-    #[cfg(feature = "google-type-dir")]
-    GoogleCarousel(GoogleCarousel),
-    #[cfg(feature = "google-type-dir")]
-    GoogleCourseList(GoogleCourseList),
-    #[cfg(feature = "google-type-dir")]
-    GoogleDataset(GoogleDataset),
-    #[cfg(feature = "google-type-dir")]
-    GoogleEvent(GoogleEvent),
-    #[cfg(feature = "google-type-dir")]
-    GoogleImageMeta(GoogleImageMeta),
-    #[cfg(feature = "google-type-dir")]
-    GoogleLocalBusiness(GoogleLocalBusiness),
-    #[cfg(feature = "google-type-dir")]
-    GoogleMovie(GoogleMovie),
-    #[cfg(feature = "google-type-dir")]
-    GoogleOrganization(GoogleOrganization),
-    #[cfg(feature = "google-type-dir")]
-    GoogleProduct(GoogleProduct),
-    #[cfg(feature = "google-type-dir")]
-    GoogleProfilePage(GoogleProfilePage),
-    #[cfg(feature = "google-type-dir")]
-    GoogleQA(GoogleQA),
-    #[cfg(feature = "google-type-dir")]
-    GoogleRecipe(GoogleRecipe),
-    #[cfg(feature = "google-type-dir")]
-    GoogleReview(GoogleReview),
-    #[cfg(feature = "google-type-dir")]
-    GoogleSoftware(GoogleSoftware),
-    #[cfg(feature = "google-type-dir")]
-    GoogleSpeakable(GoogleSpeakable),
-    #[cfg(feature = "google-type-dir")]
-    GoogleSubscription(GoogleSubscription),
-    #[cfg(feature = "google-type-dir")]
-    GoogleVacation(GoogleVacation),
-    #[cfg(feature = "google-type-dir")]
-    GoogleVideo(GoogleVideo),
+    #[cfg(feature = "seo-google")]
+    GoogleArticle(super::GoogleArticle),
+    #[cfg(feature = "seo-google")]
+    GoogleBreadcrumb(super::GoogleBreadcrumb),
+    #[cfg(feature = "seo-google")]
+    GoogleCarousel(super::GoogleCarousel),
+    #[cfg(feature = "seo-google")]
+    GoogleCourseList(super::GoogleCourseList),
+    #[cfg(feature = "seo-google")]
+    GoogleDataset(super::GoogleDataset),
+    #[cfg(feature = "seo-google")]
+    GoogleEvent(super::GoogleEvent),
+    #[cfg(feature = "seo-google")]
+    GoogleImageMeta(super::GoogleImageMeta),
+    #[cfg(feature = "seo-google")]
+    GoogleLocalBusiness(super::GoogleLocalBusiness),
+    #[cfg(feature = "seo-google")]
+    GoogleMovie(super::GoogleMovie),
+    #[cfg(feature = "seo-google")]
+    GoogleOrganization(super::GoogleOrganization),
+    #[cfg(feature = "seo-google")]
+    GoogleProduct(super::GoogleProduct),
+    #[cfg(feature = "seo-google")]
+    GoogleProfilePage(super::GoogleProfilePage),
+    #[cfg(feature = "seo-google")]
+    GoogleQA(super::GoogleQA),
+    #[cfg(feature = "seo-google")]
+    GoogleRecipe(super::GoogleRecipe),
+    #[cfg(feature = "seo-google")]
+    GoogleReview(super::GoogleReview),
+    #[cfg(feature = "seo-google")]
+    GoogleSoftware(super::GoogleSoftware),
+    #[cfg(feature = "seo-google")]
+    GoogleSpeakable(super::GoogleSpeakable),
+    #[cfg(feature = "seo-google")]
+    GoogleSubscription(super::GoogleSubscription),
+    #[cfg(feature = "seo-google")]
+    GoogleVacation(super::GoogleVacation),
+    #[cfg(feature = "seo-google")]
+    GoogleVideo(super::GoogleVideo),
 }
 
 impl Default for TypeDirectory {
