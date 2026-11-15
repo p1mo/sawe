@@ -13,10 +13,11 @@ authors = ["p1mo <101986259+p1mo@users.noreply.github.com>"]
 [package.metadata.docs.rs]
 no-default-features = false
 features = [
-  "build",
   "docs",
   "templates",
-  "google-type-dir",
+  "templates-build",
+  "seo",
+  "seo-google",
 ]
 
 [features]
