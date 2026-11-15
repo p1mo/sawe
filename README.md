@@ -2,72 +2,112 @@
 
 # sawe
 
-**A compact toolkit for building modern web applications with [Salvo](https://salvo.rs).**
+**A Salvo toolkit for serving modern web applications, rendering templates, and generating structured metadata.**
 
 [![Crates.io](https://img.shields.io/crates/v/sawe?style=for-the-badge)](https://crates.io/crates/sawe)
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
-[![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](https://github.com/p1mo/sawe/blob/dev/LICENSE_MIT)
+[![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](LICENSE_MIT)
 
-HTTP/3 · TLS · Handlebars · Embedded assets · UI icons · SEO · OpenAPI
+**HTTP/3 · TLS · Handlebars · UFS · UIICONS · SEO · Schema.org JSON-LD · OpenAPI**
 
 </div>
 
 ---
 
-## What is sawe?
+## Overview
 
-`sawe` brings together a set of useful building blocks around the [Salvo](https://salvo.rs) web framework. It keeps the flexibility of Salvo while providing a convenient server wrapper and optional tools for rendering templates, working with assets and icons, generating search metadata, and exposing OpenAPI documentation.
+`sawe` is a Rust crate built around the [Salvo](https://salvo.rs) web framework. It provides a small server wrapper for TCP and QUIC listeners, plus optional modules for template and asset handling, UI icons, SEO metadata, Schema.org JSON-LD, and OpenAPI documentation.
 
-Use only the pieces you need: the core server is available by default, while the richer template and documentation APIs are enabled through Cargo features.
+The crate is feature-gated: the server is available with the default configuration, while templates, documentation, and SEO can be enabled independently. The crate uses the Rust 2024 edition, so use a toolchain that supports it.
 
-## Highlights
+## Features
 
-- **Modern web serving** — run Salvo applications over HTTP/3 (QUIC) and HTTP/2 or HTTP/1 over TCP.
-- **TLS out of the box** — load an existing PEM certificate/key pair or generate a local self-signed certificate on first run.
-- **Graceful shutdown** — handle Ctrl+C and termination signals, with an optional shutdown timeout.
-- **Handlebars templates** — render templates from embedded or filesystem-backed assets.
-- **Asset and icon access** — use UFS-backed files and UI-icon lookups from Salvo handlers.
-- **SEO helpers** — compose standard meta tags, Open Graph and Twitter cards, plus Schema.org JSON-LD data.
-- **OpenAPI integration** — attach OpenAPI routers and render the accompanying documentation when the relevant features are enabled.
-- **Salvo-native** — `salvo` and `tokio` are re-exported for a convenient, consistent API surface.
+- **Modern web serving** — serve TCP traffic (HTTP/1 and HTTP/2) and QUIC traffic (HTTP/3) on the configured address.
+- **TLS setup** — load PEM certificate/key files or generate a local self-signed certificate when neither exists.
+- **Graceful shutdown** — react to Ctrl+C and termination signals, with an optional graceful-shutdown timeout.
+- **Handlebars templates** — find and render templates from filesystem-backed or embedded UFS assets.
+- **UI icons** — access embedded icons and perform exact or partial icon lookups.
+- **SEO metadata** — generate standard HTML metadata, Open Graph tags, Twitter cards, and site-verification tags.
+- **Schema.org JSON-LD** — build graph entities from a typed directory of Schema.org types and properties.
+- **OpenAPI documentation** — attach OpenAPI routers to the server and render documentation using an embedded Handlebars layout.
+- **Salvo and Tokio re-exports** — use the same framework/runtime versions selected by the crate.
 
 ## Installation
 
-The crate uses Rust edition 2024. Use a Rust toolchain with edition 2024 support.
-
-Add the core crate:
-
-```bash
-cargo add sawe
-```
-
-Enable template rendering, UFS assets, and UI-icon access:
-
-```bash
-cargo add sawe --features templates
-```
-
-Or configure features directly in `Cargo.toml`:
+Add `sawe` from [crates.io](https://crates.io/crates/sawe):
 
 ```toml
 [dependencies]
+sawe = "0.1.1"
+```
+
+To enable the complete feature set, use the `all` feature:
+
+```toml
+[dependencies]
+sawe = { version = "0.1.1", features = ["all"] }
+```
+
+## Feature flags
+
+The default feature set is empty (`default = []`). Enable only the modules your application needs.
+
+| Feature | API / functionality |
+| --- | --- |
+| *(no feature)* | Core `WebServer`, `ServerError`, `salvo` and `tokio` re-exports. |
+| `templates` | `sawe::templates`: Handlebars rendering, UFS-backed entries, UI-icon access, and Depot extension methods. |
+| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded documentation layout. Enable `templates` as well because the docs implementation uses Handlebars. |
+| `templates-build` | Enables the crate-root `sawe::build_uiicons` build-helper re-export. |
+| `seo` | `sawe::seo`: HTML metadata helpers and Schema.org JSON-LD types. |
+| `seo-google` | Adds Google-focused JSON-LD type variants; use together with `seo`. |
+| `all` | Enables `docs`, `templates`, `templates-build`, `seo`, and `seo-google`. |
+
+### Common configurations
+
+Server only:
+
+```toml
+sawe = "0.1.1"
+```
+
+Templates and icons:
+
+```toml
 sawe = { version = "0.1.1", features = ["templates"] }
 ```
 
-## Quick start: start a server
+OpenAPI documentation (with its Handlebars dependency):
 
-`WebServer` takes a Salvo router, an error catcher, an optional graceful-shutdown timeout, a bind address, and a directory for TLS material.
+```toml
+sawe = { version = "0.1.1", features = ["docs", "templates"] }
+```
+
+SEO and Schema.org types, including the Google-specific directory:
+
+```toml
+sawe = { version = "0.1.1", features = ["seo", "seo-google"] }
+```
+
+Everything:
+
+```toml
+sawe = { version = "0.1.1", features = ["all"] }
+```
+
+## Quick start: run the server
+
+`WebServer` accepts a Salvo router, a catcher, an optional shutdown timeout, a bind address, and a path for TLS files.
 
 ```rust
 use sawe::{
     salvo::{catcher::Catcher, prelude::Router},
-    server::WebServer,
     tokio,
+    WebServer,
 };
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Result<(), sawe::server::ServerError> {
+async fn main() -> Result<(), sawe::ServerError> {
     let router = Router::new();
 
     let server = WebServer::new(
@@ -82,11 +122,11 @@ async fn main() -> Result<(), sawe::server::ServerError> {
 }
 ```
 
-Add your handlers and routes to the `Router` before passing it to `WebServer::new`.
+Add your application routes to the `Router` before passing it to `WebServer::new`.
 
-### TLS behaviour
+### TLS files and HTTPS
 
-On first start, `sawe` creates the TLS directory and generates a self-signed certificate if neither of the expected files exists:
+At startup, the server looks for these files inside the TLS directory:
 
 ```text
 .sawe/tls/
@@ -94,105 +134,227 @@ On first start, `sawe` creates the TLS directory and generates a self-signed cer
 └── key.pem
 ```
 
-The server enforces HTTPS. For local development, open `https://127.0.0.1:5800` (or the host and port you configured). Your browser will warn that the automatically generated certificate is not trusted; that is expected.
+If **both files are absent**, `sawe` creates the directory and generates a self-signed certificate. The default subject alternative names are `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, and `::`.
 
-**For production, provide a trusted certificate and matching private key** using the filenames above. The built-in generated certificate is intended for local hosts, not a publicly trusted deployment. Keep `key.pem` private and out of version control.
+If the files already exist, the server reads them as the certificate chain and private key. Provide both files; a partial pair cannot be loaded.
 
-## Optional features
+The server installs Salvo's `ForceHttps` hoop using the configured port. For the example above, browse to `https://127.0.0.1:5800`. A browser warning is expected when using the generated self-signed certificate.
 
-`sawe` uses Cargo features so applications can opt into the additional dependencies only when they need them.
-
-| Feature | What it enables |
-| --- | --- |
-| *(no feature)* | Core `WebServer`, Salvo and Tokio re-exports, and shared error types. |
-| `templates` | Handlebars rendering, UFS-backed template entries, template helpers, and UI-icon access. |
-| `docs` | OpenAPI router integration and documentation-store helpers. Enable `templates` alongside this feature for the Handlebars-backed documentation renderer. |
-| `build` | UI-icon build support; the `build_uiicons` re-export is available when used together with `templates`. |
-| `google-type-dir` | Additional Google-oriented Schema.org type definitions for structured data. |
-
-Enable multiple features as needed:
-
-```toml
-[dependencies]
-sawe = {
-    version = "0.1.1",
-    features = ["templates", "docs", "build", "google-type-dir"],
-}
-```
+**Production:** supply a certificate trusted by your clients and its matching private key. The generated certificate is intended for local development, not public production traffic. Keep `key.pem` out of version control.
 
 ## Templates and assets
 
-Enable the `templates` feature to use the `sawe::templates` module. Its main pieces are:
+Enable `templates` to use `sawe::templates`.
 
-- `Entry::new_static(path)` — read templates from a directory on disk.
-- `Entry::new_embed(fs)` — use an embedded `ufs::UnifiedFS` asset collection.
-- `Templates<T>` — register entries under application-defined keys and find or render files using glob patterns.
-- `TemplatesDepotExt` — convenience methods for accessing templates and icons from a Salvo `Depot`.
-- `StringExt` — convert a `String` into Salvo's HTML text responder.
+### Register an entry and render a template
 
-A minimal rendering setup looks like this:
+Entries can be backed by a directory on disk or by an embedded `ufs::UnifiedFS`.
 
 ```rust
 use sawe::templates::{Entry, Templates};
 
-// `PageData` must implement serde::Serialize.
-let mut templates = Templates::<&'static str>::new();
-templates.add("site", Entry::new_static("./templates"))?;
+#[derive(serde::Serialize)]
+struct PageData {
+    title: String,
+}
 
-let html = templates.render("site", "**/index.hbs", &page_data)?;
+fn render_page() -> Result<String, Box<dyn std::error::Error>> {
+    let mut templates = Templates::<&'static str>::new();
+    templates.add("site", Entry::new_static("./templates"))?;
+
+    let data = PageData {
+        title: "Hello from sawe".to_string(),
+    };
+
+    let html = templates.render("site", "**/index.hbs", &data)?;
+    Ok(html)
+}
 ```
 
-Place an `index.hbs` file under `./templates` and choose a glob that matches its asset path (for example, `**/index.hbs`). `page_data` is a serializable view model. Add `serde` with its `derive` feature to your application if you want to derive `Serialize` for your own view-model types.
+Place an `index.hbs` file somewhere under `./templates`. The `search` argument is a `globset` pattern matched against asset paths; `**/index.hbs` matches an `index.hbs` file at any depth.
 
-The template API also supports rendering to a writer, rendering with a Handlebars `Context`, registering named templates, and looking up UI icons.
+The example uses Serde's derive macro. Add `serde = { version = "1", features = ["derive"] }` to your application's dependencies when deriving `Serialize` for your own data types.
 
-## SEO and structured data
+### Entry sources
 
-The `templates` feature also exposes SEO-oriented helpers for composing page metadata:
+| Constructor | Description |
+| --- | --- |
+| `Entry::new_static(path)` | Walk a directory on disk when looking up an asset. |
+| `Entry::new_embed(fs)` | Look up assets from an existing `ufs::UnifiedFS`. |
 
-- Base HTML metadata such as the page title, description, author, robots directives, canonical URL, icons, and web manifest.
-- Open Graph metadata for link previews.
-- Twitter card metadata.
-- Schema.org JSON-LD structures, including graph entities and typed properties.
-- Optional Bing and Google site-verification tags.
+### Template API
 
-The JSON-LD type directory includes common Schema.org categories. Enable `google-type-dir` to include the additional Google-focused type definitions.
+`Templates<T>` is keyed by an application-defined value `T` (`PartialEq + Send + Sync`).
+
+| Method | Purpose |
+| --- | --- |
+| `Templates::new()` | Create an empty template registry. |
+| `Templates::new_with_icons(key, icons)` | Create a registry with an embedded icon collection for a key. |
+| `add(key, entry)` | Register an entry; returns an error if the key already exists. |
+| `get_entry(key)` | Get a registered `Entry`. |
+| `find(key, pattern)` | Find matching asset bytes. |
+| `render(key, pattern, data)` | Render a matching Handlebars template from any `Serialize` value. |
+| `render_to_write(key, pattern, data, writer)` | Render a template directly into a writer. |
+| `render_with_context(key, pattern, context)` | Render with a Handlebars `Context`. |
+| `render_with_context_to_write(key, pattern, context, writer)` | Render a context directly into a writer. |
+| `register_template(key, pattern, name)` | Register a matching asset under a Handlebars template name. |
+| `render_template(name, value)` | Render a previously registered template using a `serde_json::Value`. |
+| `icon_find(key, search)` | Find an embedded icon by its exact lookup. |
+| `icon_par_find(key, search)` | Find an embedded icon using the partial lookup. |
+| `to_rw()` | Wrap the registry in `Arc<parking_lot::RwLock<_>>` for shared access. |
+
+The module also exposes:
+
+- `RwTemplates<T>` — the shared `Arc<RwLock<Templates<T>>>` type.
+- `EmbededIcons` and `embeded_icons` — UI-icon types/macros re-exported from `uiicons` (the spellings are part of the current API).
+- `build_uiicons` — the UI-icon build helper re-exported from the templates module.
+- `TemplatesDepotExt` — extension methods for using templates and icons from a Salvo `Depot`.
+- `StringExt::to_html()` — converts a `String` into Salvo's HTML `Text` responder.
+- `ufs` — the UFS crate re-export.
+
+`TemplatesDepotExt` provides `icons_find`, `icons_par_find`, `tpl_find`, `tpl_render`, `tpl_render_to_write`, `tpl_render_with_context`, and `tpl_render_with_context_to_write`. The corresponding `RwTemplates<T>` value must be present in the request `Depot` for these helpers to work.
 
 ## OpenAPI documentation
 
-With `docs` and `templates` enabled, `WebServer::add_oapi(...)` can associate an OpenAPI document with a router and mount that router at a chosen path. The server makes the registered specifications available through its documentation store, which can be accessed from Salvo's `Depot` using the documentation extension helpers.
+Enable both `docs` and `templates` to use the documentation integration. `WebServer::add_oapi` accepts a title, version, route path, and Salvo router. It derives an OpenAPI document from that router and mounts the generated documentation route alongside it.
 
-This keeps route registration and API documentation connected without requiring you to build a separate OpenAPI router by hand.
+```rust
+use sawe::{
+    salvo::{catcher::Catcher, prelude::Router},
+    WebServer,
+};
+use std::time::Duration;
 
-## Public API at a glance
+let router = Router::new();
+let api_router = Router::new();
 
-| API | Purpose |
+// Add your API endpoints to `api_router` before registering it.
+
+let mut server = WebServer::new(
+    router,
+    Catcher::default(),
+    Some(Duration::from_secs(10)),
+    ("127.0.0.1", 5800),
+    "./.sawe/tls",
+);
+
+server.add_oapi("Example API", "1.0.0", "/api/docs", api_router);
+
+// In an async context:
+// server.run().await?;
+```
+
+The docs feature provides:
+
+- `DocsStore` — stores the OpenAPI documents registered with the server.
+- `ArcDocsStore` — shared, lock-protected documentation-store type.
+- `DocsDepotExt` — `Depot` methods `docs_find(path)` and `docs_render(path, template)`.
+- `DEFAULT_DOCS_FILE` — the embedded Handlebars layout name, currently `documentation.hbs`.
+- `DocsError` — errors for missing documents, template rendering, serialization, and related operations.
+
+The documentation layout is embedded from `layouts/documentation.hbs`. `docs_render` renders a registered OpenAPI document with the selected embedded template.
+
+## SEO and structured data
+
+Enable `seo` to use `sawe::seo`.
+
+### HTML metadata
+
+The SEO module provides:
+
+- `BaseEntity` for standard document metadata such as title, description, author, robots directives, Googlebot directives, application name, theme color, canonical URL, favicon, Apple touch icon, and web manifest.
+- `OpenGraphEntity` for Open Graph tags.
+- `TwitterEntity` for Twitter card tags.
+- `Seo` for holding and rendering these entities and optional Bing / Google site-verification tokens.
+
+`Seo::new(bing_token, google_token)` creates the SEO helper. Use `set_base_entity`, `set_og_entity`, and `set_twitter_entity` to assign metadata entities, then call `meta_to_html()` to produce the corresponding markup.
+
+The entity structs derive Serde serialization and deserialization. Their fields are private in the current API, so populate custom values by deserializing them from a Serde-supported format (for example, JSON) rather than by assigning fields directly. This example uses `serde_json`, which your application must declare as a direct dependency:
+
+```rust
+use sawe::seo::{BaseEntity, Seo};
+
+fn render_head() -> Result<String, Box<dyn std::error::Error>> {
+    let base: BaseEntity = serde_json::from_str(
+        r#"{
+            "title": "Example",
+            "description": "An example website",
+            "canonical": "https://example.com/"
+        }"#,
+    )?;
+
+    let seo = Seo::new(None, None);
+    seo.set_base_entity(base);
+
+    Ok(seo.meta_to_html())
+}
+```
+
+### Schema.org JSON-LD
+
+The JSON-LD API is available through the same `seo` feature. It includes:
+
+- `JsonLD` — the top-level JSON-LD document (`@context`, `@graph`, `@id`, and `@type`).
+- `GraphEntity` — a strongly typed entity with a broad set of Schema.org properties (the source identifies its vocabulary as Schema.org 30.1).
+- `TypeDirectory` — grouped enums for common types such as websites, organizations, local businesses, people, places, products, offers, reviews, articles, media, education, events, software, services, and more.
+- `Custom(String)` — a custom type name when a built-in variant does not fit.
+
+Example:
+
+```rust
+use sawe::seo::{GraphEntity, JsonLD, TypeDirectory, Websites};
+
+fn json_ld_script() -> Result<String, sawe::Error> {
+    let website = GraphEntity {
+        id: Some("https://example.com/#website".to_string()),
+        typedir: TypeDirectory::Websites(Websites::WebSite),
+        name: Some("Example".to_string()),
+        url: Some("https://example.com/".to_string()),
+        ..Default::default()
+    };
+
+    let json_ld = JsonLD::new_graph(
+        vec![website],
+        "https://example.com/#structured-data",
+        TypeDirectory::Websites(Websites::WebSite),
+    );
+
+    json_ld.to_string_pretty(true)
+}
+```
+
+`to_string(false)` and `to_string_pretty(false)` return JSON text. Pass `true` to wrap the JSON in an `application/ld+json` script element.
+
+Enable `seo-google` together with `seo` to expose the additional Google-oriented type enums, such as Google article, breadcrumb, carousel, event, product, recipe, review, software, video, and other rich-result types.
+
+> **Current API note:** `Seo::meta_to_html_with_jsonld()` currently returns the same metadata markup as `meta_to_html()`; it does not append the JSON-LD script. Generate JSON-LD separately with `JsonLD::to_string(true)` and include the result in your document head.
+
+## Public API map
+
+| Path | Main exports |
 | --- | --- |
-| `sawe::server::WebServer` | Configure and run the HTTPS / HTTP/3 server. |
-| `sawe::server::ServerError` | Errors returned while starting or running the server. |
-| `sawe::salvo` | Salvo re-export. |
-| `sawe::tokio` | Tokio re-export. |
-| `sawe::templates::Entry` | Represent embedded or filesystem-backed template assets. |
-| `sawe::templates::Templates<T>` | Register, find, and render templates and icons. |
-| `sawe::templates::Seo` | Build HTML SEO metadata and verification tags. |
-| `sawe::build_uiicons` | UI-icon build helper (requires `build` and `templates`). |
+| `sawe` | `WebServer`, `ServerError`, `Error`, `salvo`, `tokio`; feature-gated SEO and template re-exports. |
+| `sawe::server` | Server implementation and, with `docs`, `DocsStore`, `DocsDepotExt`, `DocsError`, and related types. |
+| `sawe::templates` | `Entry`, `Templates<T>`, `RwTemplates<T>`, icon types, Depot extensions, and `ufs`. |
+| `sawe::seo` | `Seo`, metadata entities, `JsonLD`, `GraphEntity`, and `TypeDirectory` (requires `seo`). |
+| `sawe::build_uiicons` | UI-icon build helper (crate-root re-export requires `templates-build`). |
 
 ## Development
 
-Clone the repository and check the code with your installed Rust toolchain:
+Clone the repository to work with the source code:
 
 ```bash
 git clone https://github.com/p1mo/sawe.git
 cd sawe
-git checkout dev
-cargo check
 ```
 
-To check the optional integrations together:
+Check the default build and the complete feature set:
 
 ```bash
+cargo check
 cargo check --all-features
 cargo test --all-features
+cargo fmt -- --check
 ```
 
 ## License
@@ -206,6 +368,6 @@ cargo test --all-features
 
 <div align="center">
 
-**Built on [Salvo](https://salvo.rs) · Published on [crates.io](https://crates.io/crates/sawe) · [API docs](https://docs.rs/sawe)**
+**Built on [Salvo](https://salvo.rs) · [crates.io](https://crates.io/crates/sawe) · [API documentation](https://docs.rs/sawe)**
 
 </div>
