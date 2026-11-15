@@ -9,7 +9,7 @@ pub use ufs;
 #[cfg(feature = "templates")]
 pub use uiicons;
 
-#[cfg(any(feature = "build", feature = "templates"))]
+#[cfg(all(feature = "build", feature = "templates"))]
 pub use uiicons::build as build_uiicons;
 
 
@@ -28,6 +28,20 @@ pub enum Error {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
+
+    #[cfg(feature = "docs")]
+    #[error("oapi endpoint not found.")]
+    OApiNotFound,
+
+    #[cfg(feature = "docs")]
+    #[error(transparent)]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
+
+    #[cfg(feature = "docs")]
+    #[error(transparent)]
+    RenderError(#[from] handlebars::RenderError),
+
+    
     #[error(transparent)]
     ServerError(#[from] server::ServerError),
 

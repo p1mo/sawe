@@ -44,8 +44,6 @@ pub fn create_rustls_config(
 
 }
 
-
-
 #[derive(Debug, thiserror::Error)]
 pub enum TlsServerError {
     #[error(transparent)]

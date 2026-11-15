@@ -1,6 +1,6 @@
 [package]
 name = "sawe"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
@@ -12,15 +12,17 @@ categories = ["development-tools", "web-programming", "filesystem"]
 authors = ["p1mo <101986259+p1mo@users.noreply.github.com>"]
 
 [package.metadata.docs.rs]
-no-default-features = true
+no-default-features = false
 features = [
   "build",
+  "docs",
   "templates",
   "google-type-dir",
 ]
 
 [features]
 build = [ "uiicons/build" ]
+docs = [ "dep:parking_lot", "dep:globset", "dep:ufs" ]
 templates = [ "dep:handlebars", "dep:parking_lot", "dep:globset", "dep:ufs", "dep:uiicons" ]
 google-type-dir = []
 

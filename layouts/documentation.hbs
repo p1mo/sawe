@@ -1,0 +1,226 @@
+  <style>
+    :root {
+      --border: rgb(229, 231, 235);
+    }
+
+    .oapi {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 40px 24px;
+        font: 14px/1.6 system-ui, sans-serif;
+    }
+
+    .oapi .oapi-h1 { font-size: 28px; margin-bottom: 4px; }
+    .oapi .oapi-h2 { font-size: 19px; }
+    .oapi .oapi-h3 { font-size: 15px; }
+
+    .oapi .oapi-code,
+    .oapi .oapi-pre {
+        font-family: monospace;
+    }
+
+    .oapi .oapi-code {
+        padding: 3px 6px;
+        border-radius: 4px;
+    }
+
+    .oapi .oapi-pre {
+        padding: 12px;
+        overflow-x: auto;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    .oapi .oapi-endpoint {
+        margin: 24px 0;
+        border-radius: 8px;
+    }
+
+    .oapi .oapi-endpoint-header {
+        display: flex;
+        justify-self: start;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .oapi .oapi-endpoint-body {
+        padding: 16px;
+    }
+
+    .oapi .oapi-method {
+        min-width: 55px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+    }
+
+    .oapi .oapi-section {
+        margin-top: 20px;
+    }
+
+    .oapi .oapi-section-title {
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+
+    .oapi .oapi-item {
+        padding: 10px 0;
+    }
+
+    .oapi .oapi-badge {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: var(--muted);
+    }
+</style>
+
+<section class="oapi">
+
+    {{!-- API information --}}
+    <section class="oapi-header">
+        <div class="oapi-muted">OpenAPI - {{openapi}}</div>
+        <span class="oapi-h1">{{info.title}}</span>
+        <span class="oapi-muted">Version {{info.version}}</span>
+        {{#if info.description}}
+            <p>{{info.description}}</p>
+        {{/if}}
+    </section>
+
+
+    {{!-- Paths --}}
+    <section class="oapi-main">
+
+        <span class="oapi-title">Endpoints</h2>
+        {{#each paths}}
+            <section>
+                {{#each this}}
+
+                    {{!-- HTTP methods --}}
+                    {{#if (is_http_method @key)}}
+                        <article class="oapi-endpoint">
+
+                            {{!-- Header --}}
+                            <div class="oapi-endpoint-header">
+                                <span class="oapi-h3">
+                                    <span class="oapi-method oapi-method-{{@key}}">{{@key}}</span>
+                                    <code class="oapi-code">{{@../key}}</code>
+                                </span>
+                                {{#if deprecated}} <span class="badge">Deprecated</span> {{/if}}
+                            </div>
+                            {{!-- Header - End --}}
+
+                            <div class="oapi-endpoint-body">
+
+                                {{#if operationId}} <div class="oapi-muted">Operation ID: <code>{{operationId}}</code></div> {{/if}}
+
+                                {{#if description}} <p>{{description}}</p> {{/if}}
+
+                                {{!-- Parameters --}}
+                                {{#if parameters}}
+                                    <div class="oapi-section">
+                                        <div class="oapi-section-title">Parameters</div>
+                                        {{#each parameters}}
+                                            <div class="oapi-item">
+
+                                                <strong>{{name}}</strong>
+
+                                                <span class="oapi-badge">{{in}}</span>
+
+                                                {{#if required}} <span class="oapi-badge">Required</span> {{else}} <span class="oapi-badge">Optional</span> {{/if}}
+
+                                                {{#if description}} <p>{{description}}</p> {{/if}}
+
+                                                {{#if schema}}
+                                                    <div class="oapi-muted">Type: <code>{{schema.type}}</code></div>
+                                                    <details>
+                                                        <summary>Schema</summary>
+                                                        <pre>{{json schema}}</pre>
+                                                    </details>
+                                                {{/if}}
+
+                                            </div>
+                                        {{/each}}
+                                    </div>
+                                {{/if}}
+                                {{!-- Parameters - End --}}
+
+                                {{!-- Request body --}}
+                                {{#if requestBody}}
+                                    <div class="oapi-section">
+                                        <div class="oapi-section-title">Request Body</div>
+
+                                        {{#if requestBody.description}} <p>{{requestBody.description}}</p> {{/if}}
+
+                                        {{#each requestBody.content}}
+                                            <div class="oapi-item">
+                                                <strong>{{@key}}</strong>
+                                                {{#if schema}}
+                                                    <pre>{{json schema}}</pre>
+                                                {{/if}}
+                                            </div>
+                                        {{/each}}
+
+                                    </div>
+                                {{/if}}
+                                {{!-- Request - End --}}
+
+                                {{!-- Responses --}}
+                                {{#if responses}}
+                                    <div class="oapi-section">
+                                        <div class="section-title">Responses</div>
+
+                                        {{#each responses}}
+                                            <div class="oapi-item">
+
+                                                <strong>{{@key}}</strong>
+
+                                                <span class="oapi-muted">{{description}}</span>
+
+                                                {{#if content}}
+                                                    {{#each content}}
+                                                        <div class="oapi-section">
+                                                            <span class="oapi-badge">{{@key}}</span>
+                                                            {{#if schema}}
+                                                                <div class="oapi-muted">Type: <code>{{schema.type}}</code></div>
+                                                                <details>
+                                                                    <summary>Schema</summary>
+                                                                    <pre>{{json schema}}</pre>
+                                                                </details>
+                                                            {{/if}}
+                                                        </div>
+                                                    {{/each}}
+                                                {{/if}}
+
+                                            </div>
+                                        {{/each}}
+
+                                    </div>
+                                {{/if}}
+                                {{!-- Responses - End --}}
+
+                            </div>
+
+                        </article>
+
+                    {{/if}}
+                    {{!-- HTTP methods - End --}}
+
+                    
+                {{/each}}
+            </section>
+        {{/each}}
+
+    </section>
+    {{!-- Paths - End --}}
+
+</section>

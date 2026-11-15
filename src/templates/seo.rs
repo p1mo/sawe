@@ -1,10 +1,7 @@
 use std::sync::Arc;
-
 use parking_lot::RwLock;
+use super::json_ld::{GraphEntity, JsonLD};
 
-use crate::templates::json_ld::GraphEntity;
-
-use super::json_ld::JsonLD;
 
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -139,6 +136,7 @@ impl BaseMeta {
     }
 
 }
+
 
 
 pub struct Seo {

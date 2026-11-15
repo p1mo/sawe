@@ -2,8 +2,10 @@ mod extensions;
 pub use extensions::*;
 
 mod json_ld;
+pub use json_ld::*;
+
 mod seo;
-mod types;
+pub use seo::*;
 
 
 
@@ -78,11 +80,19 @@ where
 impl<T: PartialEq + Send + Sync> Templates<T> {
     
     pub fn new() -> Self {
-        Self { engine: Handlebars::new(), entrys: Vec::new(), icon_list: vec![] }
+        Self {
+            engine: Handlebars::new(),
+            entrys: Vec::new(),
+            icon_list: vec![]
+        }
     }
     
     pub fn new_with_icons(entry_key: T, icons: EmbededIcons) -> Self {
-        Self { engine: Handlebars::new(), entrys: Vec::new(), icon_list: vec![(entry_key, icons)] }
+        Self {
+            engine: Handlebars::new(),
+            entrys: Vec::new(),
+            icon_list: vec![(entry_key, icons)]
+        }
     }
 
     pub fn to_rw(self) -> Arc<RwLock<Templates<T>>> {
