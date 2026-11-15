@@ -2,7 +2,6 @@
 name = "sawe"
 version = "0.1.1"
 edition = "2024"
-
 description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/p1mo/sawe"
@@ -21,10 +20,17 @@ features = [
 ]
 
 [features]
-build = [ "uiicons/build" ]
+default = []
+
+all = [ "docs", "templates", "templates-build", "seo", "seo-google" ]
+
 docs = [ "dep:parking_lot", "dep:globset", "dep:ufs" ]
+
 templates = [ "dep:handlebars", "dep:parking_lot", "dep:globset", "dep:ufs", "dep:uiicons" ]
-google-type-dir = []
+templates-build = [ "dep:uiicons", "uiicons/build" ]
+
+seo = []
+seo-google = []
 
 [dependencies]
 tracing = "0.1.44"
@@ -45,4 +51,4 @@ tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "signal",
 
 http = "1.5.0"
 rcgen = "0.14.10"
-salvo = { version = "1.1.0", features = ["basic-auth", "oapi", "affix-state", "trailing-slash", "force-https", "size-limiter", "request-id", "rate-limiter", "sse", "quinn", "logging", "timeout"] }
+salvo = { version = "1.1.2", features = ["oapi", "affix-state", "trailing-slash", "force-https", "size-limiter", "request-id", "rate-limiter", "quinn", "logging"] }

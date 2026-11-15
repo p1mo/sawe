@@ -161,4 +161,8 @@ pub enum ServerError {
     
     #[error(transparent)]
     TlsServerError(#[from] tls::TlsServerError),
+    
+    #[cfg(feature = "docs")]
+    #[error(transparent)]
+    DocsError(#[from] docs::DocsError),
 }

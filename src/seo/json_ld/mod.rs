@@ -4,9 +4,9 @@ pub use properties::*;
 mod type_dir;
 pub use type_dir::*;
 
-#[cfg(feature = "google-type-dir")]
+#[cfg(feature = "seo-google")]
 mod type_gdir;
-#[cfg(feature = "google-type-dir")]
+#[cfg(feature = "seo-google")]
 pub use type_gdir::*;
 
 

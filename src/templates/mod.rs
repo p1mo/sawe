@@ -1,12 +1,10 @@
 mod extensions;
 pub use extensions::*;
 
-mod json_ld;
-pub use json_ld::*;
+pub use ufs;
 
-mod seo;
-pub use seo::*;
-
+pub use uiicons::{EmbededIcons, embeded_icons};
+pub use uiicons::build as build_uiicons;
 
 
 use std::sync::Arc;
@@ -15,8 +13,7 @@ use globset::Glob;
 use handlebars::Handlebars;
 use parking_lot::RwLock;
 
-use super::ufs::UnifiedFS;
-use super::uiicons::EmbededIcons;
+use ufs::UnifiedFS;
 
 
 

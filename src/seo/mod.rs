@@ -1,6 +1,8 @@
+mod json_ld;
+use json_ld::*;
+
 use std::sync::Arc;
 use parking_lot::RwLock;
-use super::json_ld::{GraphEntity, JsonLD};
 
 
 
