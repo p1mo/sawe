@@ -1,6 +1,6 @@
 [package]
 name = "sawe"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
 license = "MIT OR Apache-2.0"
