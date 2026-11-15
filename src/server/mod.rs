@@ -1,70 +1,150 @@
 mod tls;
 
+#[cfg(feature = "docs")]
+mod docs;
+#[cfg(feature = "docs")]
+pub use docs::*;
+
+use std::path::PathBuf;
+use std::time::Duration;
 
 
 use tokio::signal;
-
-
-
-
 use salvo::prelude::*;
 use salvo::catcher::Catcher;
-use salvo::server::ServerHandle;
 
 
 
-pub async fn http3_server(
-    r: Router,
-    c: Catcher,
+
+
+
+/// # Setup Server
+/// ### http3 **(quic)**, http2 / http1 **(tcp)**
+pub struct WebServer {
+    tls: PathBuf,
+    router: Router,
+    catcher: Catcher,
+
+    #[cfg(feature = "docs")]
+    oapi: Option<Router>,
+
+    #[cfg(feature = "docs")]
+    oapi_docs: Option<DocsStore>,
+
+    timeout: Option<Duration>,
     addr: (&'static str, u16),
-    path: impl AsRef<std::path::Path>
-) -> Result<(), ServerError> {
-
-    let config = tls::create_rustls_config(path.as_ref(), None)?;
-
-    let listener = TcpListener::new(addr).rustls(config.clone());
-
-    let acceptor = QuinnListener::new(config.build_quinn_config().unwrap(), addr).join(listener).bind().await;
-
-    let service = Service::new(r).hoop(ForceHttps::new().https_port(addr.1));
-
-    let server = Server::new(acceptor);
-
-    let handle = server.handle();
-
-    tokio::spawn(listen_shutdown_signal(handle));
-
-    Ok(server.serve(service.catcher(c)).await)
-
 }
 
-
-
-async fn listen_shutdown_signal(handle: ServerHandle) -> Result<(), ServerError> {
+impl WebServer {
     
-    let ctrl_c = async {
-        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
-    };
+    pub fn new(
+        router: Router,
+        catcher: Catcher,
+        timeout: Option<Duration>,
+        addr: (&'static str, u16),
+        tls: impl AsRef<std::path::Path>,
+    ) -> Self {
+        Self {
+            addr,
+            timeout,
+            router: router,
+            catcher: catcher,
+            tls: tls.as_ref().to_path_buf(),
 
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate()).expect("failed to install signal handler").recv().await;
-    };
+            #[cfg(feature = "docs")]
+            oapi: None,
+            
+            #[cfg(feature = "docs")]
+            oapi_docs: None,
+        }
+    }
+    
+    #[cfg(feature = "docs")]
+    pub fn add_oapi(&mut self, title: &str, version: &str, path: &str, router: Router) {
 
-    #[cfg(windows)]
-    let terminate = async {
-        signal::windows::ctrl_c().expect("failed to install signal handler").recv().await;
-    };
+        if self.oapi.is_none() {
+            self.oapi = Some(Router::new());
+        }
 
-    tokio::select! {
-        _ = ctrl_c => tracing::info!("ctrl_c signal received"),
-        _ = terminate => tracing::info!("terminate signal received"),
+        if self.oapi_docs.is_none() {
+            self.oapi_docs = Some(DocsStore::new());
+        }
+
+        let docs = OpenApi::new(title, version).merge_router(&router);
+
+        self.oapi_docs
+            .as_mut()
+            .unwrap()
+            .add(path, docs.clone());
+
+        self.oapi
+            .as_mut()
+            .unwrap()
+            .routers_mut()
+            .push(router.unshift(docs.into_router(path)));
+
     }
 
-    handle.stop_graceful(None);
+    pub async fn run(self) -> Result<(), ServerError> {
 
-    Ok(())
+        let tls_path = self.tls.as_path();
+        let config = tls::create_rustls_config(tls_path, None)?;
+        let listener = TcpListener::new(self.addr).rustls(config.clone());
+        let acceptor = QuinnListener::new(config.build_quinn_config().unwrap(), self.addr).join(listener).bind().await;
+
+
+        #[cfg(feature = "docs")]
+        let router = match self.oapi {
+            Some(oapi) => {
+                let mut r = self.router.hoop(affix_state::inject(std::sync::Arc::new(parking_lot::RwLock::new(self.oapi_docs.unwrap()))));
+                r.routers_mut().push(oapi);
+                r
+            },
+            None => {
+                self.router
+            }
+        };
+
+        #[cfg(not(feature = "docs"))]
+        let router = self.router;
+
+        let service = Service::new(router).hoop(ForceHttps::new().https_port(self.addr.1));
+        let server = Server::new(acceptor);
+        let handle = server.handle();
+
+        tokio::spawn(async move {
+
+            let ctrl_c = async {
+                signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+            };
+
+            #[cfg(unix)]
+            let terminate = async {
+                signal::unix::signal(signal::unix::SignalKind::terminate()).expect("failed to install signal handler").recv().await;
+            };
+
+            #[cfg(windows)]
+            let terminate = async {
+                signal::windows::ctrl_c().expect("failed to install signal handler").recv().await;
+            };
+
+            tokio::select! {
+                _ = ctrl_c => tracing::info!("ctrl_c signal received"),
+                _ = terminate => tracing::info!("terminate signal received"),
+            }
+
+            handle.stop_graceful(self.timeout);
+
+        });
+
+        Ok(server.serve(service.catcher(self.catcher)).await)
+
+    }
+
 }
+
+
+
 
 
 
@@ -81,4 +161,8 @@ pub enum ServerError {
     
     #[error(transparent)]
     TlsServerError(#[from] tls::TlsServerError),
+    
+    #[cfg(feature = "docs")]
+    #[error(transparent)]
+    DocsError(#[from] docs::DocsError),
 }

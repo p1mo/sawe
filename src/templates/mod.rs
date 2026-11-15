@@ -1,10 +1,10 @@
 mod extensions;
 pub use extensions::*;
 
-mod json_ld;
-mod seo;
-mod types;
+pub use ufs;
 
+pub use uiicons::{EmbededIcons, embeded_icons};
+pub use uiicons::build as build_uiicons;
 
 
 use std::sync::Arc;
@@ -13,8 +13,7 @@ use globset::Glob;
 use handlebars::Handlebars;
 use parking_lot::RwLock;
 
-use super::ufs::UnifiedFS;
-use super::uiicons::EmbededIcons;
+use ufs::UnifiedFS;
 
 
 
@@ -78,11 +77,19 @@ where
 impl<T: PartialEq + Send + Sync> Templates<T> {
     
     pub fn new() -> Self {
-        Self { engine: Handlebars::new(), entrys: Vec::new(), icon_list: vec![] }
+        Self {
+            engine: Handlebars::new(),
+            entrys: Vec::new(),
+            icon_list: vec![]
+        }
     }
     
     pub fn new_with_icons(entry_key: T, icons: EmbededIcons) -> Self {
-        Self { engine: Handlebars::new(), entrys: Vec::new(), icon_list: vec![(entry_key, icons)] }
+        Self {
+            engine: Handlebars::new(),
+            entrys: Vec::new(),
+            icon_list: vec![(entry_key, icons)]
+        }
     }
 
     pub fn to_rw(self) -> Arc<RwLock<Templates<T>>> {
