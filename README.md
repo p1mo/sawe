@@ -2,7 +2,7 @@
 
 # sawe
 
-**A Salvo toolkit for serving modern web applications, rendering templates, and generating structured metadata.**
+**A compact toolkit for building modern web applications with [Salvo](https://salvo.rs)**
 
 [![Crates.io](https://img.shields.io/crates/v/sawe?style=for-the-badge)](https://crates.io/crates/sawe)
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
