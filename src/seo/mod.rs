@@ -37,7 +37,7 @@ pub struct BaseEntity {
     /// Generates: <meta name="theme-color" content="YOUR_VALUE">
     theme_color: Option<String>,
     /// Description: Page title
-    /// Example: https://www.example.com/
+    /// Example: <https://www.example.com/>
     /// Generates: <link rel="canonical" href="YOUR_VALUE">
     canonical: Option<String>,
     /// Description: Page title
