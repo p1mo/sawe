@@ -122,7 +122,7 @@ use sawe::{
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Result<(), sawe::ServerError> {
+async fn main() -> Result<(), sawe::Error> {
     let router = Router::new();
 
     let server = WebServer::new(
@@ -173,7 +173,8 @@ pub enum MyType {
     Sqlite,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), sawe::Error> {
     let db = Database::new();
     let mut guard = db.lock().await;
     guard.add(MyType::Sqlite, ConnPool::connect("sqlite://app.db?mode=rwc").await?);
@@ -210,7 +211,8 @@ struct PageData {
     title: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), sawe::Error> {
     let templs = Templates::new();
     // or with icons
     // let templs = Templates::new_with_icons("icons", embeded_icons!());
