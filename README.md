@@ -98,10 +98,10 @@ Templates and icons:
 sawe = { version = "0.1", features = ["templates"] }
 ```
 
-OpenAPI documentation (with its Handlebars dependency):
+OpenAPI documentation:
 
 ```toml
-sawe = { version = "0.1", features = ["docs", "templates"] }
+sawe = { version = "0.1", features = ["docs"] }
 ```
 
 SEO and Schema.org types, including the Google-specific directory:
