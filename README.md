@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
 [![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](LICENSE_MIT)
 
-**HTTP/3 · TLS · Handlebars · UFS · UIICONS · SEO · Schema.org JSON-LD · OpenAPI**
+**HTTP/3 · TLS · SQLx · Handlebars · UFS · UIICONS · SEO · JSON-LD · OpenAPI**
 
 </div>
 
@@ -25,6 +25,7 @@ The crate is feature-gated: the server is available with the default configurati
 - **Modern web serving** — serve TCP traffic (HTTP/1 and HTTP/2) and QUIC traffic (HTTP/3) on the configured address.
 - **TLS setup** — load PEM certificate/key files or generate a local self-signed certificate when neither exists.
 - **Graceful shutdown** — react to Ctrl+C and termination signals, with an optional graceful-shutdown timeout.
+- **SQLx** — SQLx for seamless database access to PostgreSQL and SQLite.
 - **Handlebars templates** — find and render templates from filesystem-backed or embedded UFS assets.
 - **UI icons** — access embedded icons and perform exact or partial icon lookups.
 - **SEO metadata** — generate standard HTML metadata, Open Graph tags, Twitter cards, and site-verification tags.
@@ -38,14 +39,14 @@ Add `sawe` from [crates.io](https://crates.io/crates/sawe):
 
 ```toml
 [dependencies]
-sawe = "0.1.1"
+sawe = "0.1"
 ```
 
 To enable the complete feature set, use the `all` feature:
 
 ```toml
 [dependencies]
-sawe = { version = "0.1.1", features = ["all"] }
+sawe = { version = "0.1", features = ["all"] }
 ```
 
 ## Feature flags
@@ -55,6 +56,9 @@ The default feature set is empty (`default = []`). Enable only the modules your 
 | Feature | API / functionality |
 | --- | --- |
 | *(no feature)* | Core `WebServer`, `ServerError`, `salvo` and `tokio` re-exports. |
+| `db` | `sawe::database`: SQLx with all features enabled (db-pg, db-sqlite), and Depot extension methods. |
+| `db-pg` | `sawe::database`: SQLx with postgres with types, and Depot extension methods. |
+| `db-sqlite` | `sawe::database`: SQLx with sqlite with types, and Depot extension methods. |
 | `templates` | `sawe::templates`: Handlebars rendering, UFS-backed entries, UI-icon access, and Depot extension methods. |
 | `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded documentation layout. Enable `templates` as well because the docs implementation uses Handlebars. |
 | `templates-build` | Enables the crate-root `sawe::build_uiicons` build-helper re-export. |
@@ -67,31 +71,42 @@ The default feature set is empty (`default = []`). Enable only the modules your 
 Server only:
 
 ```toml
-sawe = "0.1.1"
+sawe = "0.1"
+```
+
+Database (SQLx):
+
+```toml
+# All Features
+sawe = { version = "0.1", features = ["db"] }
+# Postgress
+sawe = { version = "0.1", features = ["db-pg"] }
+# SQLite
+sawe = { version = "0.1", features = ["db-sqlite"] }
 ```
 
 Templates and icons:
 
 ```toml
-sawe = { version = "0.1.1", features = ["templates"] }
+sawe = { version = "0.1", features = ["templates"] }
 ```
 
 OpenAPI documentation (with its Handlebars dependency):
 
 ```toml
-sawe = { version = "0.1.1", features = ["docs", "templates"] }
+sawe = { version = "0.1", features = ["docs", "templates"] }
 ```
 
 SEO and Schema.org types, including the Google-specific directory:
 
 ```toml
-sawe = { version = "0.1.1", features = ["seo", "seo-google"] }
+sawe = { version = "0.1", features = ["seo", "seo-google"] }
 ```
 
 Everything:
 
 ```toml
-sawe = { version = "0.1.1", features = ["all"] }
+sawe = { version = "0.1", features = ["all"] }
 ```
 
 ## Quick start: run the server
@@ -142,6 +157,43 @@ The server installs Salvo's `ForceHttps` hoop using the configured port. For the
 
 **Production:** supply a certificate trusted by your clients and its matching private key. The generated certificate is intended for local development, not public production traffic. Keep `key.pem` out of version control.
 
+## Database using SQLx
+
+Enable `db`, `db-pg`, `db-sqlite` to use `sawe::database`.
+
+### Register an database Connection
+
+Connection can be either postgres url or sqlite url
+
+```rust
+use sawe::database::{ConnPool, Database};
+
+#[derive(PartialEq)]
+pub enum MyType {
+    Sqlite,
+}
+
+fn main() {
+    let db = Database::new();
+    let mut guard = db.lock().await;
+    guard.add(MyType::Sqlite, ConnPool::connect("sqlite://app.db?mode=rwc").await?);
+    drop(guard);
+
+    // inject "db" into your router
+}
+
+#[handler]
+async fn render_page(depot: &mut Depot) -> Result<String, Box<dyn std::error::Error>> {
+
+    let pool = depot.database(MyType::Sqlite).await?;
+
+    // Use pool here with your sql querys
+    
+}
+```
+
+
+
 ## Templates and assets
 
 Enable `templates` to use `sawe::templates`.
@@ -158,17 +210,30 @@ struct PageData {
     title: String,
 }
 
-fn render_page() -> Result<String, Box<dyn std::error::Error>> {
-    let mut templates = Templates::<&'static str>::new();
-    templates.add("site", Entry::new_static("./templates"))?;
+fn main() {
+    let templs = Templates::new();
+    // or with icons
+    // let templs = Templates::new_with_icons("icons", embeded_icons!());
+    let mut guard = templs.lock().await;
+    guard.add("site", Entry::new_static("./templates"))?;
+    drop(guard);
+
+    // inject "templs" into your router
+}
+
+#[handler]
+async fn render_page(depot: &mut Depot) -> Result<String, Box<dyn std::error::Error>> {
 
     let data = PageData {
         title: "Hello from sawe".to_string(),
     };
 
-    let html = templates.render("site", "**/index.hbs", &data)?;
+    let html = depot.tpl_render("site", "**/index.hbs", &data)?;
+
     Ok(html)
+    
 }
+
 ```
 
 Place an `index.hbs` file somewhere under `./templates`. The `search` argument is a `globset` pattern matched against asset paths; `**/index.hbs` matches an `index.hbs` file at any depth.

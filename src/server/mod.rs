@@ -33,6 +33,7 @@ pub struct WebServer {
 
     timeout: Option<Duration>,
     addr: (&'static str, u16),
+    subject_alt_names: Option<Vec<&'static str>>,
 }
 
 impl WebServer {
@@ -43,12 +44,14 @@ impl WebServer {
         timeout: Option<Duration>,
         addr: (&'static str, u16),
         tls: impl AsRef<std::path::Path>,
+        subject_alt_names: Option<Vec<&'static str>>,
     ) -> Self {
         Self {
             addr,
             timeout,
             router: router,
             catcher: catcher,
+            subject_alt_names,
             tls: tls.as_ref().to_path_buf(),
 
             #[cfg(feature = "docs")]
@@ -88,7 +91,7 @@ impl WebServer {
     pub async fn run(self) -> Result<(), ServerError> {
 
         let tls_path = self.tls.as_path();
-        let config = tls::create_rustls_config(tls_path, None)?;
+        let config = tls::create_rustls_config(tls_path, self.subject_alt_names)?;
         let listener = TcpListener::new(self.addr).rustls(config.clone());
         let acceptor = QuinnListener::new(config.build_quinn_config().unwrap(), self.addr).join(listener).bind().await;
 

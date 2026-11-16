@@ -8,10 +8,10 @@ pub use uiicons::build as build_uiicons;
 
 
 use std::sync::Arc;
+use parking_lot::RwLock;
 
 use globset::Glob;
 use handlebars::Handlebars;
-use parking_lot::RwLock;
 
 use ufs::UnifiedFS;
 
@@ -76,24 +76,20 @@ where
 
 impl<T: PartialEq + Send + Sync> Templates<T> {
     
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Arc<RwLock<Templates<T>>> {
+        Arc::new(RwLock::new(Self {
             engine: Handlebars::new(),
             entrys: Vec::new(),
             icon_list: vec![]
-        }
+        }))
     }
     
-    pub fn new_with_icons(entry_key: T, icons: EmbededIcons) -> Self {
-        Self {
+    pub fn new_with_icons(entry_key: T, icons: EmbededIcons) -> Arc<RwLock<Templates<T>>> {
+        Arc::new(RwLock::new(Self {
             engine: Handlebars::new(),
             entrys: Vec::new(),
             icon_list: vec![(entry_key, icons)]
-        }
-    }
-
-    pub fn to_rw(self) -> Arc<RwLock<Templates<T>>> {
-        Arc::new(RwLock::new(self))
+        }))
     }
 
     pub fn add(&mut self, entry_key: T, entry: Entry) -> Result<(), TemplatesError> {

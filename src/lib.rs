@@ -1,6 +1,11 @@
 pub mod server;
 pub use server::*;
 
+#[cfg(any(feature = "db", feature = "db-pg", feature = "db-sqlite"))]
+pub mod database;
+#[cfg(any(feature = "db", feature = "db-pg", feature = "db-sqlite"))]
+pub use database::*;
+
 #[cfg(feature = "seo")]
 pub mod seo;
 #[cfg(feature = "seo")]
