@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
 [![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](LICENSE_MIT)
 
-**HTTP/3 · TLS · Handlebars · UFS · UIICONS · SEO · Schema.org JSON-LD · OpenAPI**
+**HTTP/3 · TLS · SQLx · Handlebars · UFS · UIICONS · SEO · JSON-LD · OpenAPI**
 
 </div>
 
@@ -25,6 +25,7 @@ The crate is feature-gated: the server is available with the default configurati
 - **Modern web serving** — serve TCP traffic (HTTP/1 and HTTP/2) and QUIC traffic (HTTP/3) on the configured address.
 - **TLS setup** — load PEM certificate/key files or generate a local self-signed certificate when neither exists.
 - **Graceful shutdown** — react to Ctrl+C and termination signals, with an optional graceful-shutdown timeout.
+- **Database pools (SQLx)** — keep keyed connection pools for PostgreSQL and/or SQLite and retrieve them from Salvo's request `Depot`.
 - **Handlebars templates** — find and render templates from filesystem-backed or embedded UFS assets.
 - **UI icons** — access embedded icons and perform exact or partial icon lookups.
 - **SEO metadata** — generate standard HTML metadata, Open Graph tags, Twitter cards, and site-verification tags.
@@ -38,14 +39,14 @@ Add `sawe` from [crates.io](https://crates.io/crates/sawe):
 
 ```toml
 [dependencies]
-sawe = "0.1.1"
+sawe = "0.1"
 ```
 
 To enable the complete feature set, use the `all` feature:
 
 ```toml
 [dependencies]
-sawe = { version = "0.1.1", features = ["all"] }
+sawe = { version = "0.1", features = ["all"] }
 ```
 
 ## Feature flags
@@ -54,44 +55,65 @@ The default feature set is empty (`default = []`). Enable only the modules your 
 
 | Feature | API / functionality |
 | --- | --- |
-| *(no feature)* | Core `WebServer`, `ServerError`, `salvo` and `tokio` re-exports. |
+| *(no feature)* | Core `WebServer`, `ServerError`, `salvo`, and `tokio` re-exports. |
+| `db` | Enables both SQLx database backends (`db-pg` and `db-sqlite`) and exposes `sawe::database`. |
+| `db-pg` | Enables the SQLx PostgreSQL backend and exposes `sawe::database`. |
+| `db-sqlite` | Enables the SQLx SQLite backend and exposes `sawe::database`. |
 | `templates` | `sawe::templates`: Handlebars rendering, UFS-backed entries, UI-icon access, and Depot extension methods. |
-| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded documentation layout. Enable `templates` as well because the docs implementation uses Handlebars. |
+| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded Handlebars documentation layout. Its required Handlebars/UFS dependencies are enabled by this feature. |
 | `templates-build` | Enables the crate-root `sawe::build_uiicons` build-helper re-export. |
 | `seo` | `sawe::seo`: HTML metadata helpers and Schema.org JSON-LD types. |
 | `seo-google` | Adds Google-focused JSON-LD type variants; use together with `seo`. |
-| `all` | Enables `docs`, `templates`, `templates-build`, `seo`, and `seo-google`. |
+| `all` | Enables `db`, `docs`, `templates`, `templates-build`, `seo`, and `seo-google` (including both database drivers). |
 
 ### Common configurations
 
 Server only:
 
 ```toml
-sawe = "0.1.1"
+sawe = "0.1"
+```
+
+Database access (enable both PostgreSQL and SQLite):
+
+```toml
+sawe = { version = "0.1", features = ["db"] }
+```
+
+PostgreSQL only:
+
+```toml
+sawe = { version = "0.1", features = ["db-pg"] }
+```
+
+SQLite only:
+
+```toml
+sawe = { version = "0.1", features = ["db-sqlite"] }
 ```
 
 Templates and icons:
 
 ```toml
-sawe = { version = "0.1.1", features = ["templates"] }
+sawe = { version = "0.1", features = ["templates"] }
 ```
 
-OpenAPI documentation (with its Handlebars dependency):
+OpenAPI documentation:
 
 ```toml
-sawe = { version = "0.1.1", features = ["docs", "templates"] }
+sawe = { version = "0.1", features = ["docs"] }
 ```
 
 SEO and Schema.org types, including the Google-specific directory:
 
 ```toml
-sawe = { version = "0.1.1", features = ["seo", "seo-google"] }
+sawe = { version = "0.1", features = ["seo", "seo-google"] }
 ```
 
 Everything:
 
 ```toml
-sawe = { version = "0.1.1", features = ["all"] }
+sawe = { version = "0.1", features = ["all"] }
 ```
 
 ## Quick start: run the server
@@ -107,7 +129,7 @@ use sawe::{
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Result<(), sawe::ServerError> {
+async fn main() -> Result<(), sawe::Error> {
     let router = Router::new();
 
     let server = WebServer::new(
@@ -116,6 +138,7 @@ async fn main() -> Result<(), sawe::ServerError> {
         Some(Duration::from_secs(10)),
         ("127.0.0.1", 5800),
         "./.sawe/tls",
+        None, // use sawe's default certificate subject alternative names
     );
 
     server.run().await
@@ -142,6 +165,81 @@ The server installs Salvo's `ForceHttps` hoop using the configured port. For the
 
 **Production:** supply a certificate trusted by your clients and its matching private key. The generated certificate is intended for local development, not public production traffic. Keep `key.pem` out of version control.
 
+## Database access with SQLx
+
+Enable `db`, `db-pg`, or `db-sqlite` to expose `sawe::database` (the database exports are also re-exported from the crate root). This module is a small keyed registry for SQLx `AnyPool` connection pools. It does not define an ORM or hide SQL: use the re-exported `sqlx` API to create queries, run migrations, and work with rows.
+
+### Choose a database driver
+
+| Feature | Backend |
+| --- | --- |
+| `db-pg` | PostgreSQL |
+| `db-sqlite` | SQLite |
+| `db` | Both PostgreSQL and SQLite |
+
+`db` is a convenience feature that enables `db-pg` and `db-sqlite`. The module calls `sqlx::any::install_default_drivers()` when `Database::new()` is created, so the enabled SQLx drivers are registered before an `AnyPool` is opened.
+
+### Public database types
+
+| Export | Definition / purpose |
+| --- | --- |
+| `sqlx` | Re-export of SQLx, available as `sawe::database::sqlx`. |
+| `ConnOptions` | Alias for `sqlx::any::AnyPoolOptions`. |
+| `ConnPool` | Alias for `sqlx::AnyPool`, the pooled connection type used by the registry. |
+| `Connection` | Alias for `sqlx::AnyConnection`. |
+| `Database<T>` | Stores `(key, ConnPool)` pairs. The key type must implement `PartialEq + Send + Sync + 'static`. |
+| `DatabaseHandler<T>` | Shared handler type: `Arc<tokio::sync::Mutex<Database<T>>>`. |
+| `DatabaseDepotExt<T>` | Salvo `Depot` extension trait for asynchronously retrieving a registered pool. |
+| `DatabaseError` | Database lookup and SQLx-related error type. |
+
+### Create a pool and register it
+
+`Database::new()` returns a `DatabaseHandler<T>` (an `Arc<tokio::sync::Mutex<_>>`), not a bare `Database<T>`. Create a pool with `ConnOptions`, add it under an application-defined key, and inject the shared handler into the router's request state.
+
+The following example uses SQLite; select the `db-sqlite` or `db` feature:
+
+```rust
+use sawe::database::{ConnPool, Database};
+
+#[derive(PartialEq)]
+pub enum MyType {
+    Sqlite,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), sawe::Error> {
+    let db = Database::new();
+    let mut guard = db.lock().await;
+    guard.add(MyType::Sqlite, ConnPool::connect("sqlite://app.db?mode=rwc").await?);
+    drop(guard);
+
+    // inject "db" into your router
+}
+
+#[handler]
+async fn render_page(depot: &mut Depot) -> Result<String, Box<dyn std::error::Error>> {
+
+    let pool = depot.database(MyType::Sqlite).await?;
+
+    // Use pool here with your sql querys
+    
+}
+```
+
+**Important:** inject a `DatabaseHandler<T>` into the request `Depot` before calling `Depot::database`. The current implementation expects that state to exist and unwraps the lookup; a missing injected handler is therefore a programming/configuration error rather than a `DatabaseError`.
+
+### `Database<T>` methods
+
+| Method | Behaviour |
+| --- | --- |
+| `Database::new()` | Install SQLx's default `Any` drivers and create an empty shared database handler. |
+| `exists(key)` | Check whether a key is present. |
+| `add(key, pool)` | Append a key/pool pair to the registry. |
+| `get(key)` | Return a reference to the matching `(key, pool)` pair, if present. |
+| `Depot::database(key).await` | Resolve the injected registry and return a cloned pool, or `DatabasePoolNotFound`. |
+
+`add` does not reject duplicate keys. Use `exists` before adding if your application requires unique keys. The database error type also wraps SQLx and common I/O, formatting, UTF-8, parsing, and JSON errors.
+
 ## Templates and assets
 
 Enable `templates` to use `sawe::templates`.
@@ -158,17 +256,31 @@ struct PageData {
     title: String,
 }
 
-fn render_page() -> Result<String, Box<dyn std::error::Error>> {
-    let mut templates = Templates::<&'static str>::new();
-    templates.add("site", Entry::new_static("./templates"))?;
+#[tokio::main]
+async fn main() -> Result<(), sawe::Error> {
+    let templs = Templates::new();
+    // or with icons
+    // let templs = Templates::new_with_icons("icons", embeded_icons!());
+    let mut guard = templs.lock().await;
+    guard.add("site", Entry::new_static("./templates"))?;
+    drop(guard);
+
+    // inject "templs" into your router
+}
+
+#[handler]
+async fn render_page(depot: &mut Depot) -> Result<String, Box<dyn std::error::Error>> {
 
     let data = PageData {
         title: "Hello from sawe".to_string(),
     };
 
-    let html = templates.render("site", "**/index.hbs", &data)?;
+    let html = depot.tpl_render("site", "**/index.hbs", &data)?;
+
     Ok(html)
+    
 }
+
 ```
 
 Place an `index.hbs` file somewhere under `./templates`. The `search` argument is a `globset` pattern matched against asset paths; `**/index.hbs` matches an `index.hbs` file at any depth.
@@ -327,13 +439,12 @@ fn json_ld_script() -> Result<String, sawe::Error> {
 
 Enable `seo-google` together with `seo` to expose the additional Google-oriented type enums, such as Google article, breadcrumb, carousel, event, product, recipe, review, software, video, and other rich-result types.
 
-> **Current API note:** `Seo::meta_to_html_with_jsonld()` currently returns the same metadata markup as `meta_to_html()`; it does not append the JSON-LD script. Generate JSON-LD separately with `JsonLD::to_string(true)` and include the result in your document head.
-
 ## Public API map
 
 | Path | Main exports |
 | --- | --- |
 | `sawe` | `WebServer`, `ServerError`, `Error`, `salvo`, `tokio`; feature-gated SEO and template re-exports. |
+| `sawe::database` | `sqlx`, `ConnOptions`, `ConnPool`, `Connection`, `Database<T>`, `DatabaseHandler<T>`, `DatabaseDepotExt<T>`, and `DatabaseError` (requires `db`, `db-pg`, or `db-sqlite`). |
 | `sawe::server` | Server implementation and, with `docs`, `DocsStore`, `DocsDepotExt`, `DocsError`, and related types. |
 | `sawe::templates` | `Entry`, `Templates<T>`, `RwTemplates<T>`, icon types, Depot extensions, and `ufs`. |
 | `sawe::seo` | `Seo`, metadata entities, `JsonLD`, `GraphEntity`, and `TypeDirectory` (requires `seo`). |

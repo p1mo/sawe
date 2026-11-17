@@ -10,8 +10,6 @@ mod type_gdir;
 pub use type_gdir::*;
 
 
-use crate::Error;
-
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct JsonLD {
@@ -63,14 +61,14 @@ impl JsonLD {
         self.graph.push(graph);
     }
 
-    pub fn to_string(&self, script_tag: bool) -> Result<String, Error> {
+    pub fn to_string(&self, script_tag: bool) -> Result<String, super::SeoError> {
         Ok(match script_tag {
             false => serde_json::to_string(self)?,
             true => format!(r#"<script type="application/ld+json">{}</script>"#, serde_json::to_string(self)?),
         })
     }
 
-    pub fn to_string_pretty(&self, script_tag: bool) -> Result<String, Error> {
+    pub fn to_string_pretty(&self, script_tag: bool) -> Result<String, super::SeoError> {
         Ok(match script_tag {
             false => serde_json::to_string_pretty(self)?,
             true => format!(r#"<script type="application/ld+json">{}</script>"#, serde_json::to_string_pretty(self)?),
