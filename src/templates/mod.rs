@@ -190,6 +190,10 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
         }
     }
 
+    pub fn register_template_str(&mut self, name: &str, template: &str) -> Result<(), TemplatesError> {
+        Ok(self.engine.register_template_string(name, template)?)
+    }
+
     pub fn render_template(&self, name: &str, data: serde_json::Value) -> Result<String, TemplatesError> {
         Ok(self.engine.render(name, &data)?)
     }

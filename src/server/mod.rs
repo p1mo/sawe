@@ -5,6 +5,7 @@ mod docs;
 #[cfg(feature = "docs")]
 pub use docs::*;
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -32,7 +33,7 @@ pub struct WebServer {
     oapi_docs: Option<DocsStore>,
 
     timeout: Option<Duration>,
-    addr: (&'static str, u16),
+    addr: SocketAddr,
     subject_alt_names: Option<Vec<&'static str>>,
 }
 
@@ -42,12 +43,12 @@ impl WebServer {
         router: Router,
         catcher: Catcher,
         timeout: Option<Duration>,
-        addr: (&'static str, u16),
+        addr: &str,
         tls: impl AsRef<std::path::Path>,
         subject_alt_names: Option<Vec<&'static str>>,
-    ) -> Self {
-        Self {
-            addr,
+    ) -> Result<Self, ServerError> {
+        Ok(Self {
+            addr: addr.parse::<SocketAddr>()?,
             timeout,
             router: router,
             catcher: catcher,
@@ -59,7 +60,7 @@ impl WebServer {
             
             #[cfg(feature = "docs")]
             oapi_docs: None,
-        }
+        })
     }
     
     #[cfg(feature = "docs")]
@@ -111,7 +112,7 @@ impl WebServer {
         #[cfg(not(feature = "docs"))]
         let router = self.router;
 
-        let service = Service::new(router).hoop(ForceHttps::new().https_port(self.addr.1));
+        let service = Service::new(router).hoop(ForceHttps::new().https_port(self.addr.port()));
         let server = Server::new(acceptor);
         let handle = server.handle();
 
@@ -161,6 +162,8 @@ pub enum ServerError {
     SalvoError(#[from] salvo::Error),
     #[error(transparent)]
     Join(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    AddrParseError(#[from] std::net::AddrParseError),
     
     #[error(transparent)]
     TlsServerError(#[from] tls::TlsServerError),
