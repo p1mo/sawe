@@ -1,3 +1,5 @@
+pub extern crate salvo;
+
 pub mod server;
 pub use server::*;
 
@@ -15,12 +17,20 @@ pub use seo::*;
 pub mod templates;
 #[cfg(feature = "templates")]
 pub use templates::*;
+#[cfg(feature = "templates")]
+pub use handlebars;
 
 #[cfg(feature = "templates-build")]
 pub use uiicons::build as build_uiicons;
 
-pub use salvo;
+
+
+//pub use salvo;
+//pub use salvo::*;
+
 pub use tokio;
+
+
 
 
 #[derive(Debug, thiserror::Error)]
