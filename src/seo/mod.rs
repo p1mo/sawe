@@ -223,7 +223,7 @@ impl Seo {
         html
     }
 
-    pub fn meta_to_html_with_jsonld(&self) -> String {
+    pub fn meta_to_html_with_jsonld(&self, jsonld: JsonLD) -> Result<String, SeoError> {
         let mut html = String::new();
 
         let meta = self.meta.write();
@@ -238,7 +238,9 @@ impl Seo {
             html.push_str(&value);
         }
 
-        html
+        html.push_str(jsonld.to_string(true)?.as_str());
+
+        Ok(html)
     }
 
 }
@@ -341,4 +343,20 @@ impl TwitterEntity {
 
         html
     }
+}
+
+
+
+
+
+#[derive(Debug, thiserror::Error)]
+pub enum SeoError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Fmt(#[from] std::fmt::Error),
+    #[error(transparent)]
+    SalvoError(#[from] salvo::Error),
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),    
 }

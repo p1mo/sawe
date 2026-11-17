@@ -439,8 +439,6 @@ fn json_ld_script() -> Result<String, sawe::Error> {
 
 Enable `seo-google` together with `seo` to expose the additional Google-oriented type enums, such as Google article, breadcrumb, carousel, event, product, recipe, review, software, video, and other rich-result types.
 
-> **Current API note:** `Seo::meta_to_html_with_jsonld()` currently returns the same metadata markup as `meta_to_html()`; it does not append the JSON-LD script. Generate JSON-LD separately with `JsonLD::to_string(true)` and include the result in your document head.
-
 ## Public API map
 
 | Path | Main exports |
