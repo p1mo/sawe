@@ -85,4 +85,4 @@ lz4_flex = { version = "0.14.2" }
 zstd = { version = "0.14.4" }
 brotli = { version = "9.1.3" }
 
-sawe_macros = { path = "macros" }
+sawe_macros = { version = "0.1.0", path = "macros" }
