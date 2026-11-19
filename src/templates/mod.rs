@@ -1,67 +1,19 @@
 mod extensions;
 pub use extensions::*;
 
-pub use ufs;
-
 pub use uiicons::{EmbededIcons, embeded_icons};
 pub use uiicons::build as build_uiicons;
 
 
 use std::sync::Arc;
 use parking_lot::RwLock;
-
-use globset::Glob;
 use handlebars::Handlebars;
 
-use ufs::UnifiedFS;
+use crate::Directory;
 
 
 
 
-
-pub enum Kind {
-    Embeded(UnifiedFS),
-    Static(UnifiedFS, String),
-}
-
-
-
-pub struct Entry {
-    inner: Kind,
-}
-
-impl Entry {
-    
-    pub fn new_embed(fs: UnifiedFS) -> Self {
-        Self { inner: Kind::Embeded(fs) }
-    }
-
-    pub fn new_static(path: impl AsRef<std::path::Path>) -> Self {
-        Self { inner: Kind::Static(UnifiedFS::new(), path.as_ref().display().to_string()) }
-    }
-
-    pub fn find(&self, input: &str) -> Result<&'static [u8], TemplatesError> {
-        let matcher = Glob::new(input)?;
-        match self.inner {
-            Kind::Embeded(ref unified_fs) => {
-                for entry in unified_fs.iter() {
-                    if matcher.compile_matcher().is_match(entry.path.clone()) {
-                        return Ok(entry.content()?);
-                    }
-                }
-            },
-            Kind::Static(ref unified_fs, ref path) => {
-                for entry in unified_fs.walk(path) {
-                    if matcher.compile_matcher().is_match(entry.path.clone()) {
-                        return Ok(entry.content()?);
-                    }
-                }
-            },
-        }
-        Err(TemplatesError::GlobNotFound())
-    }
-
-}
 
 
 
@@ -70,7 +22,7 @@ where
     T: PartialEq + Send + Sync
 {
     engine: Handlebars<'static>,
-    entrys: Vec<(T, Entry)>,
+    entrys: Vec<(T, Directory)>,
     icon_list: Vec<(T, EmbededIcons)>,
 }
 
@@ -92,7 +44,7 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
         }))
     }
 
-    pub fn add(&mut self, entry_key: T, entry: Entry) -> Result<(), TemplatesError> {
+    pub fn add(&mut self, entry_key: T, entry: Directory) -> Result<(), TemplatesError> {
         match self.entrys.iter().find(|i| i.0 == entry_key).is_some() {
             true => Err(TemplatesError::KeyExists()),
             false => {
@@ -102,16 +54,22 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
         }
     }
 
-    pub fn get_entry(&self, entry_key: T) -> Result<&Entry, TemplatesError> {
+    pub fn get_entry(&self, entry_key: T) -> Result<&Directory, TemplatesError> {
         match self.entrys.iter().find(|i| i.0 == entry_key) {
             Some((_, entry)) => Ok(entry),
             None => Err(TemplatesError::KeyNotFound()),
         }
     }
 
-    pub fn find(&self, entry_key: T, search: &str) -> Result<&'static [u8], TemplatesError> {
+    pub fn find(&self, entry_key: T, search: &str) -> Result<Option<Arc<[u8]>>, TemplatesError> {
         match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => Ok(entry.find(search)?),
+            Some((_, entry)) => Ok(
+                entry
+                    .iter()
+                    .find(|item| item.path.display().to_string().replace("\\", "/").ends_with(search))
+                    .map(|item| item.bytes())
+                    .ok_or(TemplatesError::GlobNotFound())??
+            ),
             None => Err(TemplatesError::GlobNotFound()),
         }
     }
@@ -134,11 +92,8 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
     where
         S: serde::Serialize,
     {
-        match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => {
-                let res = entry.find(search)?;
-                Ok(self.engine.render_template(&String::from_utf8(res.to_vec())?, data)?)
-            },
+        match self.find(entry_key, search)? {
+            Some(entry) => Ok(self.engine.render_template(&String::from_utf8(entry.to_vec())?, data)?),
             None => Err(TemplatesError::KeyNotFound()),
         }
     }
@@ -148,21 +103,15 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
         S: serde::Serialize,
         W: std::io::Write,
     {
-        match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => {
-                let res = entry.find(search)?;
-                Ok(self.engine.render_template_to_write(&String::from_utf8(res.to_vec())?, data, writer)?)
-            },
+        match self.find(entry_key, search)? {
+            Some(entry) => Ok(self.engine.render_template_to_write(&String::from_utf8(entry.to_vec())?, data, writer)?),
             None => Err(TemplatesError::KeyNotFound()),
         }
     }
 
     pub fn render_with_context(&self, entry_key: T, search: &str, ctx: &Context) -> Result<String, TemplatesError> {
-        match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => {
-                let res = entry.find(search)?;
-                Ok(self.engine.render_template_with_context(&String::from_utf8(res.to_vec())?, ctx)?)
-            },
+        match self.find(entry_key, search)? {
+            Some(entry) => Ok(self.engine.render_template_with_context(&String::from_utf8(entry.to_vec())?, ctx)?),
             None => Err(TemplatesError::KeyNotFound()),
         }
     }
@@ -171,22 +120,16 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
     where
         W: std::io::Write,
     {
-        match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => {
-                let res = entry.find(search)?;
-                Ok(self.engine.render_template_with_context_to_write(&String::from_utf8(res.to_vec())?, ctx, writer)?)
-            },
+        match self.find(entry_key, search)? {
+            Some(entry) => Ok(self.engine.render_template_with_context_to_write(&String::from_utf8(entry.to_vec())?, ctx, writer)?),
             None => Err(TemplatesError::KeyNotFound()),
         }
     }
 
     pub fn register_template(&mut self, entry_key: T, search: &str, name: &str) -> Result<(), TemplatesError> {
-        match self.entrys.iter().find(|i| i.0 == entry_key) {
-            Some((_, entry)) => {
-                let res = entry.find(search)?;
-                Ok(self.engine.register_template_string(name, &String::from_utf8(res.to_vec())?)?)
-            },
-            None => Err(TemplatesError::GlobNotFound()),
+        match self.find(entry_key, search)? {
+            Some(entry) => Ok(self.engine.register_template_string(name, &String::from_utf8(entry.to_vec())?)?),
+            None => Err(TemplatesError::KeyNotFound()),
         }
     }
 
@@ -216,15 +159,9 @@ pub enum TemplatesError {
     FromUtf8Error(#[from] std::string::FromUtf8Error),
 
     #[error(transparent)]
-    UFSError(#[from] ufs::Error),
-
-    #[error(transparent)]
     HandlebarsRenderError(#[from] handlebars::RenderError),
     #[error(transparent)]
     HandlebarsTemplateError(#[from] handlebars::TemplateError),
-
-    #[error(transparent)]
-    GlobSetError(#[from] globset::Error),
 
     #[error("glob not found")]
     GlobNotFound(),

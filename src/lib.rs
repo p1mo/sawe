@@ -8,6 +8,15 @@ pub mod database;
 #[cfg(any(feature = "db", feature = "db-pg", feature = "db-sqlite"))]
 pub use database::*;
 
+
+
+#[cfg(feature = "fsread")]
+pub mod fsread;
+#[cfg(feature = "fsread")]
+pub use fsread::*;
+
+
+
 #[cfg(feature = "seo")]
 pub mod seo;
 #[cfg(feature = "seo")]

@@ -1,0 +1,21 @@
+[package]
+name = "sawe_macros"
+version = "0.1.0"
+edition = "2021"
+description = "marcos for sawe"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/p1mo/sawe"
+readme = "README.md"
+keywords = ["http", "assets", "salvo", "web", "server"]
+categories = ["development-tools", "web-programming", "filesystem"]
+authors = ["p1mo <101986259+p1mo@users.noreply.github.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro-crate = "3.5.0"
+
+lz4_flex = "0.14.2"
+zstd = "0.14.4"
+brotli = "9.1.3"

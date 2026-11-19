@@ -1,8 +1,8 @@
 mod tls;
 
-#[cfg(feature = "docs")]
+#[cfg(all(feature = "fsread", feature = "docs"))]
 mod docs;
-#[cfg(feature = "docs")]
+#[cfg(all(feature = "fsread", feature = "docs"))]
 pub use docs::*;
 
 use std::net::SocketAddr;
@@ -16,9 +16,6 @@ use salvo::catcher::Catcher;
 
 
 
-
-
-
 /// # Setup Server
 /// ### http3 **(quic)**, http2 / http1 **(tcp)**
 pub struct WebServer {
@@ -26,10 +23,10 @@ pub struct WebServer {
     router: Router,
     catcher: Catcher,
 
-    #[cfg(feature = "docs")]
+    #[cfg(all(feature = "fsread", feature = "docs"))]
     oapi: Option<Router>,
 
-    #[cfg(feature = "docs")]
+    #[cfg(all(feature = "fsread", feature = "docs"))]
     oapi_docs: Option<DocsStore>,
 
     timeout: Option<Duration>,
@@ -55,15 +52,15 @@ impl WebServer {
             subject_alt_names,
             tls: tls.as_ref().to_path_buf(),
 
-            #[cfg(feature = "docs")]
+            #[cfg(all(feature = "fsread", feature = "docs"))]
             oapi: None,
             
-            #[cfg(feature = "docs")]
+            #[cfg(all(feature = "fsread", feature = "docs"))]
             oapi_docs: None,
         })
     }
     
-    #[cfg(feature = "docs")]
+    #[cfg(all(feature = "fsread", feature = "docs"))]
     pub fn add_oapi(&mut self, title: &str, version: &str, path: &str, router: Router) {
 
         if self.oapi.is_none() {
@@ -76,28 +73,17 @@ impl WebServer {
 
         let docs = OpenApi::new(title, version).merge_router(&router);
 
-        self.oapi_docs
-            .as_mut()
-            .unwrap()
-            .add(path, docs.clone());
-
-        self.oapi
-            .as_mut()
-            .unwrap()
-            .routers_mut()
-            .push(router.unshift(docs.into_router(path)));
+        self.oapi_docs.as_mut().unwrap().add(path, docs.clone());
+        self.oapi.as_mut().unwrap().routers_mut().push(router.unshift(docs.into_router(path)));
 
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
 
-        let tls_path = self.tls.as_path();
-        let config = tls::create_rustls_config(tls_path, self.subject_alt_names)?;
-        let listener = TcpListener::new(self.addr).rustls(config.clone());
-        let acceptor = QuinnListener::new(config.build_quinn_config().unwrap(), self.addr).join(listener).bind().await;
+        #[cfg(not(feature = "docs"))]
+        let router = self.router;
 
-
-        #[cfg(feature = "docs")]
+        #[cfg(all(feature = "fsread", feature = "docs"))]
         let router = match self.oapi {
             Some(oapi) => {
                 let mut r = self.router.hoop(affix_state::inject(std::sync::Arc::new(parking_lot::RwLock::new(self.oapi_docs.unwrap()))));
@@ -109,9 +95,11 @@ impl WebServer {
             }
         };
 
-        #[cfg(not(feature = "docs"))]
-        let router = self.router;
+        let tls_path = self.tls.as_path();
+        let config = tls::create_rustls_config(tls_path, self.subject_alt_names.clone())?;
+        let listener = TcpListener::new(self.addr).rustls(config.clone());
 
+        let acceptor = QuinnListener::new(config.build_quinn_config().unwrap(), self.addr).join(listener).bind().await;
         let service = Service::new(router).hoop(ForceHttps::new().https_port(self.addr.port()));
         let server = Server::new(acceptor);
         let handle = server.handle();
@@ -168,7 +156,7 @@ pub enum ServerError {
     #[error(transparent)]
     TlsServerError(#[from] tls::TlsServerError),
     
-    #[cfg(feature = "docs")]
+    #[cfg(all(feature = "fsread", feature = "docs"))]
     #[error(transparent)]
     DocsError(#[from] docs::DocsError),
 }

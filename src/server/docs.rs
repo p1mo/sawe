@@ -1,7 +1,12 @@
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
-use handlebars::{handlebars_helper, Handlebars};
+use handlebars::Handlebars;
+use handlebars::handlebars_helper;
+
+use crate::{ Directory, embed_dir };
+
 use salvo::prelude::*;
+
 use parking_lot::RwLock;
 
 
@@ -11,9 +16,9 @@ handlebars_helper!(json: |value: Json| serde_json::to_string_pretty(value).unwra
 
 pub type ArcDocsStore = Arc<RwLock<DocsStore>>;
 
-pub struct DocsStore(Handlebars<'static>, ufs::UnifiedFS, Vec<(String, OpenApi)>);
+pub struct DocsStore(Handlebars<'static>, Directory, Vec<(String, OpenApi)>);
 
-pub static DEFAULT_DOCS_FILE: &str = "documentation.hbs";
+pub static DEFAULT_DOCS_FILE: &str = "docs_content.hbs";
 
 impl DocsStore {
 
@@ -21,31 +26,33 @@ impl DocsStore {
         let mut hbs = Handlebars::new();
         hbs.register_helper("is_http_method", Box::new(is_http_method));
         hbs.register_helper("json", Box::new(json));
-        Self(hbs, ufs::bind_dir!("layouts"), Vec::new())
+        Self(hbs, embed_dir!("layouts", true, crate::Compression::Fast), Vec::new())
     }
     
-    pub fn add(&mut self, path: &str, docs: OpenApi) {
-        self.2.push((path.to_string(), docs));
+    pub fn add(&mut self, schema: &str, docs: OpenApi) {
+        self.2.push((schema.to_string(), docs));
     }
 
-    pub fn get(&self, path: &str) -> Option<&OpenApi> {
-        self.2.iter().find(|(k, _)| k.as_str() == path).map(|(_, docs)| docs)
+    pub fn get(&self, schema: &str) -> Option<&OpenApi> {
+        self.2.iter().find(|(k, _)| k.as_str() == schema).map(|(_, docs)| docs)
     }
 
-    fn find_docs(&self, path: impl AsRef<Path>) -> Option<&'static [u8]> {
-        self.1.iter().find(|entry| entry.path.display().to_string().ends_with(&path.as_ref().display().to_string())).map(|item| item.content().unwrap())
+    fn find_docs(&self, glob: &str) -> Result<Option<Arc<[u8]>>, DocsError> {
+        for entry in self.1.iter() {
+            let path = entry.path.display().to_string().replace("\\", "/");
+            if path.ends_with(glob) {
+                return Ok(entry.bytes()?);
+            }
+        }
+        Err(DocsError::DocsLayoutNotFound(glob.into()))
     }
 
-    pub fn docs_render<S>(&self, path: impl AsRef<Path>, data: &S) -> Result<String, DocsError>
+    pub fn docs_render<S>(&self, glob: &str, data: &S) -> Result<String, DocsError>
     where
         S: serde::Serialize,
     {
-        match self.find_docs(path) {
-            Some(res) => {
-                Ok(self.0.render_template(&String::from_utf8(res.to_vec())?, data)?)
-            },
-            None => Err(DocsError::OApiNotFound),
-        }
+        let content = self.find_docs(glob)?;
+        Ok(self.0.render_template(&String::from_utf8(content.unwrap().to_vec())?, data)?)
     }
 
 }
@@ -53,22 +60,22 @@ impl DocsStore {
 
 
 pub trait DocsDepotExt {
-    fn docs_find(&self, docs: &str) -> Result<OpenApi, DocsError>;
-    fn docs_render(&self, docs: &str, template: &str) -> Result<String, DocsError>;
+    fn docs_find(&self, schema: &str) -> Result<OpenApi, DocsError>;
+    fn docs_render(&self, schema: &str, template: &str) -> Result<String, DocsError>;
 }
 
 impl DocsDepotExt for Depot {
 
-    fn docs_find(&self, docs: &str) -> Result<OpenApi, DocsError> {
+    fn docs_find(&self, schema: &str) -> Result<OpenApi, DocsError> {
         let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read();
-        let docs = guard.get(docs).ok_or(DocsError::OApiNotFound)?.clone();
+        let docs = guard.get(schema).ok_or(DocsError::OApiNotFound)?.clone();
         drop(guard);
         Ok(docs)
     }
 
-    fn docs_render(&self, docs: &str, template: &str) -> Result<String, DocsError> {
+    fn docs_render(&self, schema: &str, template: &str) -> Result<String, DocsError> {
         let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read();
-        let docs = guard.get(docs).ok_or(DocsError::OApiNotFound)?;
+        let docs = guard.get(schema).ok_or(DocsError::OApiNotFound)?;
         let string = guard.docs_render(template, docs)?;
         drop(guard);
         Ok(string)
@@ -90,6 +97,8 @@ pub enum DocsError {
 
     #[error("oapi endpoint not found.")]
     OApiNotFound,
+    #[error("docs layout [{0}] not found.")]
+    DocsLayoutNotFound(String),
 
     #[error(transparent)]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
