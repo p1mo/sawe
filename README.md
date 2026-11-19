@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
 [![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](LICENSE_MIT)
 
-**HTTP/3 · TLS · SQLx · Handlebars · UFS · UIICONS · SEO · JSON-LD · OpenAPI**
+**HTTP/3 · TLS · SQLx · Handlebars · UIICONS · SEO · JSON-LD · OpenAPI**
 
 </div>
 
@@ -26,7 +26,7 @@ The crate is feature-gated: the server is available with the default configurati
 - **TLS setup** — load PEM certificate/key files or generate a local self-signed certificate when neither exists.
 - **Graceful shutdown** — react to Ctrl+C and termination signals, with an optional graceful-shutdown timeout.
 - **Database pools (SQLx)** — keep keyed connection pools for PostgreSQL and/or SQLite and retrieve them from Salvo's request `Depot`.
-- **Handlebars templates** — find and render templates from filesystem-backed or embedded UFS assets.
+- **Handlebars templates** — find and render templates from filesystem-backed or embedded assets.
 - **UI icons** — access embedded icons and perform exact or partial icon lookups.
 - **SEO metadata** — generate standard HTML metadata, Open Graph tags, Twitter cards, and site-verification tags.
 - **Schema.org JSON-LD** — build graph entities from a typed directory of Schema.org types and properties.
@@ -59,8 +59,10 @@ The default feature set is empty (`default = []`). Enable only the modules your 
 | `db` | Enables both SQLx database backends (`db-pg` and `db-sqlite`) and exposes `sawe::database`. |
 | `db-pg` | Enables the SQLx PostgreSQL backend and exposes `sawe::database`. |
 | `db-sqlite` | Enables the SQLx SQLite backend and exposes `sawe::database`. |
-| `templates` | `sawe::templates`: Handlebars rendering, UFS-backed entries, UI-icon access, and Depot extension methods. |
-| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded Handlebars documentation layout. Its required Handlebars/UFS dependencies are enabled by this feature. |
+| `fsread` | Enables the Embeded & Static file reading. |
+| `fsread-par` | Enables the **fsread** & rayon feature. |
+| `templates` | `sawe::templates`: Handlebars rendering, UI-icon access, and Depot extension methods. |
+| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded Handlebars documentation layout. Its required Handlebars dependencies are enabled by this feature. |
 | `templates-build` | Enables the crate-root `sawe::build_uiicons` build-helper re-export. |
 | `seo` | `sawe::seo`: HTML metadata helpers and Schema.org JSON-LD types. |
 | `seo-google` | Adds Google-focused JSON-LD type variants; use together with `seo`. |
@@ -90,6 +92,18 @@ SQLite only:
 
 ```toml
 sawe = { version = "0.1", features = ["db-sqlite"] }
+```
+
+Reading & Embeding files:
+
+```toml
+sawe = { version = "0.1", features = ["fsread"] }
+```
+
+Reading & Embeding files & rayon:
+
+```toml
+sawe = { version = "0.1", features = ["fsread-par"] }
 ```
 
 Templates and icons:
@@ -246,10 +260,10 @@ Enable `templates` to use `sawe::templates`.
 
 ### Register an entry and render a template
 
-Entries can be backed by a directory on disk or by an embedded `ufs::UnifiedFS`.
+Entries can be backed by a directory on disk or by an embedded.
 
 ```rust
-use sawe::templates::{Entry, Templates};
+use sawe::templates::{Direcotry, Templates};
 
 #[derive(serde::Serialize)]
 struct PageData {
@@ -262,7 +276,7 @@ async fn main() -> Result<(), sawe::Error> {
     // or with icons
     // let templs = Templates::new_with_icons("icons", embeded_icons!());
     let mut guard = templs.lock().await;
-    guard.add("site", Entry::new_static("./templates"))?;
+    guard.add("site", Direcotry::walk("./templates"))?;
     drop(guard);
 
     // inject "templs" into your router
@@ -287,13 +301,6 @@ Place an `index.hbs` file somewhere under `./templates`. The `search` argument i
 
 The example uses Serde's derive macro. Add `serde = { version = "1", features = ["derive"] }` to your application's dependencies when deriving `Serialize` for your own data types.
 
-### Entry sources
-
-| Constructor | Description |
-| --- | --- |
-| `Entry::new_static(path)` | Walk a directory on disk when looking up an asset. |
-| `Entry::new_embed(fs)` | Look up assets from an existing `ufs::UnifiedFS`. |
-
 ### Template API
 
 `Templates<T>` is keyed by an application-defined value `T` (`PartialEq + Send + Sync`).
@@ -303,7 +310,7 @@ The example uses Serde's derive macro. Add `serde = { version = "1", features = 
 | `Templates::new()` | Create an empty template registry. |
 | `Templates::new_with_icons(key, icons)` | Create a registry with an embedded icon collection for a key. |
 | `add(key, entry)` | Register an entry; returns an error if the key already exists. |
-| `get_entry(key)` | Get a registered `Entry`. |
+| `get_entry(key)` | Get a registered `Direcotry`. |
 | `find(key, pattern)` | Find matching asset bytes. |
 | `render(key, pattern, data)` | Render a matching Handlebars template from any `Serialize` value. |
 | `render_to_write(key, pattern, data, writer)` | Render a template directly into a writer. |
@@ -322,7 +329,6 @@ The module also exposes:
 - `build_uiicons` — the UI-icon build helper re-exported from the templates module.
 - `TemplatesDepotExt` — extension methods for using templates and icons from a Salvo `Depot`.
 - `StringExt::to_html()` — converts a `String` into Salvo's HTML `Text` responder.
-- `ufs` — the UFS crate re-export.
 
 `TemplatesDepotExt` provides `icons_find`, `icons_par_find`, `tpl_find`, `tpl_render`, `tpl_render_to_write`, `tpl_render_with_context`, and `tpl_render_with_context_to_write`. The corresponding `RwTemplates<T>` value must be present in the request `Depot` for these helpers to work.
 
@@ -446,7 +452,8 @@ Enable `seo-google` together with `seo` to expose the additional Google-oriented
 | `sawe` | `WebServer`, `ServerError`, `Error`, `salvo`, `tokio`; feature-gated SEO and template re-exports. |
 | `sawe::database` | `sqlx`, `ConnOptions`, `ConnPool`, `Connection`, `Database<T>`, `DatabaseHandler<T>`, `DatabaseDepotExt<T>`, and `DatabaseError` (requires `db`, `db-pg`, or `db-sqlite`). |
 | `sawe::server` | Server implementation and, with `docs`, `DocsStore`, `DocsDepotExt`, `DocsError`, and related types. |
-| `sawe::templates` | `Entry`, `Templates<T>`, `RwTemplates<T>`, icon types, Depot extensions, and `ufs`. |
+| `sawe::fsread` | `Entry`, `EntryKind`, `Status`, `Compression`, `Codec` and `embed_dir!`. |
+| `sawe::templates` | `Templates<T>`, `RwTemplates<T>`, icon types, Depot extensions. |
 | `sawe::seo` | `Seo`, metadata entities, `JsonLD`, `GraphEntity`, and `TypeDirectory` (requires `seo`). |
 | `sawe::build_uiicons` | UI-icon build helper (crate-root re-export requires `templates-build`). |
 
