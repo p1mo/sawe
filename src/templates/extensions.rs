@@ -27,7 +27,7 @@ where
     
     fn icons_par_find(&self, entry_key: T, search: &str) -> Result<Vec<u8>, crate::Error>;
     
-    fn tpl_find(&self, entry_key: T, search: &str) -> Result<&'static [u8], crate::Error>;
+    fn tpl_find(&self, entry_key: T, search: &str) -> Result<Vec<u8>, crate::Error>;
     
     fn tpl_render<S>(&self, entry_key: T, search: &str, data: &S) -> Result<String, crate::Error>
     where
@@ -62,11 +62,11 @@ impl<T: PartialEq + Send + Sync + 'static> TemplatesDepotExt<T> for Depot {
         Ok(content)
     }
     
-    fn tpl_find(&self, entry_key: T, search: &str) -> Result<&'static [u8], crate::Error> {
+    fn tpl_find(&self, entry_key: T, search: &str) -> Result<Vec<u8>, crate::Error> {
         let guard = self.get_typed::<super::RwTemplates<T>>().unwrap().read();
-        let content = guard.find(entry_key, search)?;
+        let content = guard.find(entry_key, search)?.ok_or(super::TemplatesError::GlobNotFound())?;
         drop(guard);
-        Ok(content)
+        Ok(content.to_vec())
     }
 
     fn tpl_render<S>(&self, entry_key: T, search: &str, data: &S) -> Result<String, crate::Error>
