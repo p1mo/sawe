@@ -15,7 +15,6 @@ use salvo::prelude::*;
 use salvo::catcher::Catcher;
 
 
-
 /// # Setup Server
 /// ### http3 **(quic)**, http2 / http1 **(tcp)**
 pub struct WebServer {
@@ -86,7 +85,7 @@ impl WebServer {
         #[cfg(all(feature = "fsread", feature = "docs"))]
         let router = match self.oapi {
             Some(oapi) => {
-                let mut r = self.router.hoop(affix_state::inject(std::sync::Arc::new(parking_lot::RwLock::new(self.oapi_docs.unwrap()))));
+                let mut r = self.router.hoop(affix_state::inject(std::sync::Arc::new(std::sync::RwLock::new(self.oapi_docs.unwrap()))));
                 r.routers_mut().push(oapi);
                 r
             },

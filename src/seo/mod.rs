@@ -1,8 +1,7 @@
 mod json_ld;
 use json_ld::*;
 
-use std::sync::Arc;
-use parking_lot::RwLock;
+use std::sync::{Arc, RwLock};
 
 
 
@@ -176,31 +175,31 @@ impl Seo {
     }
 
     pub fn set_base_entity(&self, base: BaseEntity) {
-        let mut meta = self.meta.write();
+        let mut meta = self.meta.write().unwrap();
         meta.base = Some(base);
         drop(meta);
     }
 
     pub fn set_og_entity(&self, base: OpenGraphEntity) {
-        let mut meta = self.meta.write();
+        let mut meta = self.meta.write().unwrap();
         meta.open_graph = Some(base);
         drop(meta);
     }
 
     pub fn set_twitter_entity(&self, base: TwitterEntity) {
-        let mut meta = self.meta.write();
+        let mut meta = self.meta.write().unwrap();
         meta.twitter = Some(base);
         drop(meta);
     }
 
     pub fn set_json_grapth(&self, base: Vec<GraphEntity>) {
-        let mut meta = self.json.write();
+        let mut meta = self.json.write().unwrap();
         meta.set_grapth(base);
         drop(meta);
     }
 
     pub fn push_json_grapth(&self, base: GraphEntity) {
-        let mut meta = self.json.write();
+        let mut meta = self.json.write().unwrap();
         meta.push_grapth(base);
         drop(meta);
     }
@@ -208,7 +207,7 @@ impl Seo {
     pub fn meta_to_html(&self) -> String {
         let mut html = String::new();
 
-        let meta = self.meta.write();
+        let meta = self.meta.write().unwrap();
         html.push_str(&meta.to_html());
         drop(meta);
 
@@ -226,7 +225,7 @@ impl Seo {
     pub fn meta_to_html_with_jsonld(&self, jsonld: JsonLD) -> Result<String, SeoError> {
         let mut html = String::new();
 
-        let meta = self.meta.write();
+        let meta = self.meta.write().unwrap();
         html.push_str(&meta.to_html());
         drop(meta);
 
