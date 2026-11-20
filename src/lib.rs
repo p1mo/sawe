@@ -3,9 +3,11 @@ pub extern crate salvo;
 pub mod server;
 pub use server::*;
 
-#[cfg(any(feature = "db", feature = "db-pg", feature = "db-sqlite"))]
+
+
+#[cfg(feature = "db")]
 pub mod database;
-#[cfg(any(feature = "db", feature = "db-pg", feature = "db-sqlite"))]
+#[cfg(feature = "db")]
 pub use database::*;
 
 
@@ -17,10 +19,19 @@ pub use fsread::*;
 
 
 
+#[cfg(feature = "md")]
+pub mod markdown;
+#[cfg(feature = "md")]
+pub use markdown::*;
+
+
+
 #[cfg(feature = "seo")]
 pub mod seo;
 #[cfg(feature = "seo")]
 pub use seo::*;
+
+
 
 #[cfg(feature = "templates")]
 pub mod templates;
@@ -33,9 +44,6 @@ pub use handlebars;
 pub use uiicons::build as build_uiicons;
 
 
-
-//pub use salvo;
-//pub use salvo::*;
 
 pub use tokio;
 
@@ -54,9 +62,25 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
     
     #[error(transparent)]
-    ServerError(#[from] server::ServerError),
+    ServerError(#[from] ServerError),
+    
+    #[cfg(feature = "db")]
+    #[error(transparent)]
+    DatabaseError(#[from] DatabaseError),
 
+    #[cfg(feature = "md")]
+    #[error(transparent)]
+    MarkdownError(#[from] MarkdownError),
+    
+    #[cfg(feature = "seo")]
+    #[error(transparent)]
+    SeoError(#[from] SeoError),
+    
+    #[cfg(feature = "docs")]
+    #[error(transparent)]
+    DocsError(#[from] DocsError),
+    
     #[cfg(feature = "templates")]
     #[error(transparent)]
-    TemplatesError(#[from] templates::TemplatesError),
+    TemplatesError(#[from] TemplatesError),
 }

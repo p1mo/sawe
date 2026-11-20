@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/docsrs/sawe?style=for-the-badge)](https://docs.rs/sawe)
 [![License](https://img.shields.io/crates/l/sawe?style=for-the-badge)](LICENSE_MIT)
 
-**HTTP/3 · TLS · SQLx · Handlebars · UIICONS · SEO · JSON-LD · OpenAPI**
+**HTTP/3 · TLS · SQLx · Handlebars · MD · UIICONS · SEO · JSON-LD · OpenAPI**
 
 </div>
 
@@ -20,14 +20,19 @@
 
 The crate is feature-gated: the server is available with the default configuration, while templates, documentation, and SEO can be enabled independently.
 
+## Note
+
+`sawe` is currently synchronous and will be transitioned to asynchronous processing.
+
 ## Features
 
 - **Modern web serving** — serve TCP traffic (HTTP/1 and HTTP/2) and QUIC traffic (HTTP/3) on the configured address.
 - **TLS setup** — load PEM certificate/key files or generate a local self-signed certificate when neither exists.
 - **Graceful shutdown** — react to Ctrl+C and termination signals, with an optional graceful-shutdown timeout.
 - **Database pools (SQLx)** — keep keyed connection pools for PostgreSQL and/or SQLite and retrieve them from Salvo's request `Depot`.
-- **Handlebars templates** — find and render templates from filesystem-backed or embedded assets.
-- **UI icons** — access embedded icons and perform exact or partial icon lookups.
+- **Handlebars templates** — find and render templates from filesystem-backed or embedded.
+- **Markdown rendering** — pre-render and find rendered markdown from filesystem-backed or embedded.
+- **UIICONS** — access embedded icons and perform exact or partial icon lookups.
 - **SEO metadata** — generate standard HTML metadata, Open Graph tags, Twitter cards, and site-verification tags.
 - **Schema.org JSON-LD** — build graph entities from a typed directory of Schema.org types and properties.
 - **OpenAPI documentation** — attach OpenAPI routers to the server and render documentation using an embedded Handlebars layout.
@@ -62,8 +67,9 @@ The default feature set is empty (`default = []`). Enable only the modules your 
 | `fsread` | Enables the Embeded & Static file reading. |
 | `fsread-par` | Enables the **fsread** & rayon feature. |
 | `templates` | `sawe::templates`: Handlebars rendering, UI-icon access, and Depot extension methods. |
-| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded Handlebars documentation layout. Its required Handlebars dependencies are enabled by this feature. |
 | `templates-build` | Enables the crate-root `sawe::build_uiicons` build-helper re-export. |
+| `docs` | OpenAPI router integration, `DocsStore`, `DocsDepotExt`, and the embedded Handlebars documentation layout. Its required Handlebars dependencies are enabled by this feature. |
+| `md` | Enables Markdown rendering support. |
 | `seo` | `sawe::seo`: HTML metadata helpers and Schema.org JSON-LD types. |
 | `seo-google` | Adds Google-focused JSON-LD type variants; use together with `seo`. |
 | `all` | Enables `db`, `docs`, `templates`, `templates-build`, `seo`, and `seo-google` (including both database drivers). |
@@ -104,6 +110,12 @@ Reading & Embeding files & rayon:
 
 ```toml
 sawe = { version = "0.1", features = ["fsread-par"] }
+```
+
+Markdown:
+
+```toml
+sawe = { version = "0.1", features = ["md"] }
 ```
 
 Templates and icons:
@@ -451,10 +463,11 @@ Enable `seo-google` together with `seo` to expose the additional Google-oriented
 | --- | --- |
 | `sawe` | `WebServer`, `ServerError`, `Error`, `salvo`, `tokio`; feature-gated SEO and template re-exports. |
 | `sawe::database` | `sqlx`, `ConnOptions`, `ConnPool`, `Connection`, `Database<T>`, `DatabaseHandler<T>`, `DatabaseDepotExt<T>`, and `DatabaseError` (requires `db`, `db-pg`, or `db-sqlite`). |
-| `sawe::server` | Server implementation and, with `docs`, `DocsStore`, `DocsDepotExt`, `DocsError`, and related types. |
+| `sawe::server` | Server implementation and, with `docs`, `DocsStore`, `DocsDepotExt`, `DocsError` and related types. |
 | `sawe::fsread` | `Entry`, `EntryKind`, `Status`, `Compression`, `Codec` and `embed_dir!`. |
 | `sawe::templates` | `Templates<T>`, `RwTemplates<T>`, icon types, Depot extensions. |
-| `sawe::seo` | `Seo`, metadata entities, `JsonLD`, `GraphEntity`, and `TypeDirectory` (requires `seo`). |
+| `sawe::seo` | `Seo`, metadata entities, `JsonLD`, `GraphEntity` and `TypeDirectory` (requires `seo`). |
+| `sawe::markdown` | `Markdown`, `MarkdownDepot` and comark's `Options`, `Plugins` (requires `md`). |
 | `sawe::build_uiicons` | UI-icon build helper (crate-root re-export requires `templates-build`). |
 
 ## Development

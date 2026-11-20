@@ -1,13 +1,14 @@
-use std::sync::Arc;
+
+use std::sync::{Arc, RwLock};
 
 use handlebars::Handlebars;
 use handlebars::handlebars_helper;
 
 use crate::{ Directory, embed_dir };
 
+use globset::Glob;
 use salvo::prelude::*;
 
-use parking_lot::RwLock;
 
 
 handlebars_helper!(is_http_method: |method: str| matches!(method, "get" | "post" | "put" | "patch" | "delete" | "options" | "head" | "trace"));
@@ -18,7 +19,7 @@ pub type ArcDocsStore = Arc<RwLock<DocsStore>>;
 
 pub struct DocsStore(Handlebars<'static>, Directory, Vec<(String, OpenApi)>);
 
-pub static DEFAULT_DOCS_FILE: &str = "docs_content.hbs";
+pub static DEFAULT_DOCS_FILE: &str = "**/docs_content.hbs";
 
 impl DocsStore {
 
@@ -37,14 +38,14 @@ impl DocsStore {
         self.2.iter().find(|(k, _)| k.as_str() == schema).map(|(_, docs)| docs)
     }
 
-    fn find_docs(&self, glob: &str) -> Result<Option<Arc<[u8]>>, DocsError> {
+    fn find_docs(&self, search: &str) -> Result<Option<Arc<[u8]>>, DocsError> {
+        let matcher = Glob::new(search)?.compile_matcher();
         for entry in self.1.iter() {
-            let path = entry.path.display().to_string().replace("\\", "/");
-            if path.ends_with(glob) {
+            if matcher.is_match(entry.path.display().to_string().replace("\\", "/")) {
                 return Ok(entry.bytes()?);
             }
         }
-        Err(DocsError::DocsLayoutNotFound(glob.into()))
+        Err(DocsError::DocsLayoutNotFound(search.into()))
     }
 
     pub fn docs_render<S>(&self, glob: &str, data: &S) -> Result<String, DocsError>
@@ -67,14 +68,14 @@ pub trait DocsDepotExt {
 impl DocsDepotExt for Depot {
 
     fn docs_find(&self, schema: &str) -> Result<OpenApi, DocsError> {
-        let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read();
+        let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read().unwrap();
         let docs = guard.get(schema).ok_or(DocsError::OApiNotFound)?.clone();
         drop(guard);
         Ok(docs)
     }
 
     fn docs_render(&self, schema: &str, template: &str) -> Result<String, DocsError> {
-        let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read();
+        let guard = self.get_typed::<super::ArcDocsStore>().unwrap().read().unwrap();
         let docs = guard.get(schema).ok_or(DocsError::OApiNotFound)?;
         let string = guard.docs_render(template, docs)?;
         drop(guard);
@@ -93,16 +94,21 @@ pub enum DocsError {
     #[error(transparent)]
     ParseIntError(#[from] std::num::ParseIntError),
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-
-    #[error("oapi endpoint not found.")]
-    OApiNotFound,
-    #[error("docs layout [{0}] not found.")]
-    DocsLayoutNotFound(String),
-
-    #[error(transparent)]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
 
     #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+
+    #[error(transparent)]
     RenderError(#[from] handlebars::RenderError),
+
+    #[error(transparent)]
+    GlobsetError(#[from] globset::Error),
+
+
+    #[error("oapi endpoint not found.")]
+    OApiNotFound,
+
+    #[error("docs layout [{0}] not found.")]
+    DocsLayoutNotFound(String),
 }

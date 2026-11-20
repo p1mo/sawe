@@ -5,8 +5,9 @@ pub use uiicons::{EmbededIcons, embeded_icons};
 pub use uiicons::build as build_uiicons;
 
 
-use std::sync::Arc;
-use parking_lot::RwLock;
+use std::sync::{Arc, RwLock};
+
+use globset::Glob;
 use handlebars::Handlebars;
 
 use crate::Directory;
@@ -62,11 +63,12 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
     }
 
     pub fn find(&self, entry_key: T, search: &str) -> Result<Option<Arc<[u8]>>, TemplatesError> {
+        let matcher = Glob::new(search)?.compile_matcher();
         match self.entrys.iter().find(|i| i.0 == entry_key) {
             Some((_, entry)) => Ok(
                 entry
                     .iter()
-                    .find(|item| item.path.display().to_string().replace("\\", "/").ends_with(search))
+                    .find(|item| matcher.is_match(item.path.display().to_string().replace("\\", "/")))
                     .map(|item| item.bytes())
                     .ok_or(TemplatesError::GlobNotFound())??
             ),
@@ -145,10 +147,6 @@ impl<T: PartialEq + Send + Sync> Templates<T> {
 
 
 
-pub type RwTemplates<T> = Arc<RwLock<Templates<T>>>;
-
-
-
 #[derive(Debug, thiserror::Error)]
 pub enum TemplatesError {
     #[error(transparent)]
@@ -163,15 +161,15 @@ pub enum TemplatesError {
     #[error(transparent)]
     HandlebarsTemplateError(#[from] handlebars::TemplateError),
 
+    #[error(transparent)]
+    GlobsetError(#[from] globset::Error),
+
     #[error("glob not found")]
     GlobNotFound(),
-
     #[error("key already exists")]
     KeyExists(),
-
     #[error("key not found")]
     KeyNotFound(),
-
     #[error("icon not found")]
     IconNotFound(),
 }

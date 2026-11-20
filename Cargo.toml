@@ -1,8 +1,8 @@
 [package]
 name = "sawe"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
-description = "wrapper for salvo with handlebars, ufs, uiicons & SEO rendering"
+description = "wrapper for salvo with sqlx, handlebars, markdown, uiicons & SEO rendering"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/p1mo/sawe"
 readme = "README.md"
@@ -20,12 +20,13 @@ features = [
   "db-pg",
   "db-sqlite",
   "docs",
-  "fsread", 
-  "fsread-par", 
-  "templates",
-  "templates-build",
+  "fsread",
+  "fsread-par",
+  "md",
   "seo",
   "seo-google",
+  "templates",
+  "templates-build",
 ]
 
 [workspace]
@@ -34,22 +35,24 @@ members = ["macros"]
 [features]
 default = []
 
-all = [ "db", "docs", "fsread-par", "templates", "templates-build", "seo", "seo-google" ]
+all = [ "db", "docs", "fsread-par", "md", "templates", "templates-build", "seo", "seo-google" ]
 
 db = [ "db-pg", "db-sqlite" ]
 db-pg = [ "dep:sqlx", "sqlx/postgres", "sqlx/ipnet", "sqlx/json" ]
 db-sqlite = [ "dep:sqlx", "sqlx/sqlite" ]
 
-docs = [ "dep:handlebars", "dep:parking_lot", "salvo/oapi" ]
+docs = [ "dep:globset", "dep:handlebars", "salvo/oapi" ]
 
 fsread = []
 fsread-par = [ "fsread", "dep:rayon" ]
 
-templates = [ "dep:handlebars", "dep:parking_lot", "dep:uiicons" ]
-templates-build = [ "dep:uiicons", "uiicons/build" ]
+md = [ "dep:comrak", "dep:globset" ]
 
 seo = []
 seo-google = []
+
+templates = [ "dep:handlebars", "dep:globset", "dep:uiicons" ]
+templates-build = [ "dep:uiicons", "uiicons/build" ]
 
 [dependencies]
 tracing = "0.1.44"
@@ -59,19 +62,9 @@ schemars = "1.2.2"
 serde_json = "1.0.152"
 serde = { version = "1.0.229", features = ["derive"] }
 
-handlebars = { version = "6.4.4", optional = true }
-parking_lot = { version = "0.13.0", optional = true }
-#globset = { version = "0.4.21", optional = true, features = ["serde1"] }
-
-uiicons = { version = "0.1.6", optional = true, features = ["build"] }
-
-sqlx = { version = "0.9.1", optional = true, features = [
-  "any", "derive", "macros", "migrate",
-  # Global Type Support
-  "uuid", "chrono", "bstr", "rust_decimal",
-  # RT + TLS
-  "runtime-tokio", "tls-rustls-aws-lc-rs"
-] }
+lz4_flex = { version = "0.14.2" }
+zstd = { version = "0.14.4" }
+brotli = { version = "9.1.3" }
 
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "signal", "time"] }
 
@@ -79,10 +72,13 @@ http = "1.5.0"
 rcgen = "0.14.10"
 salvo = { version = "1.2.1", features = [ "affix-state", "trailing-slash", "force-https", "size-limiter", "request-id", "rate-limiter", "quinn", "logging"] }
 
+# Optional
+comrak = { version = "1.1.0", optional = true }
 rayon = { version = "1.12.0", optional = true }
+handlebars = { version = "6.4.4", optional = true }
+uiicons = { version = "0.1.6", optional = true, features = ["build"] }
+globset = { version = "0.4.21", optional = true, features = ["serde1"] }
+sqlx = { version = "0.9.1", optional = true, features = [ "any", "derive", "macros", "migrate", "uuid", "chrono", "bstr", "rust_decimal", "runtime-tokio", "tls-rustls-aws-lc-rs" ] }
 
-lz4_flex = { version = "0.14.2" }
-zstd = { version = "0.14.4" }
-brotli = { version = "9.1.3" }
-
+# Internal
 sawe_macros = { version = "0.1.0", path = "macros" }
