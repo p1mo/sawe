@@ -81,4 +81,4 @@ globset = { version = "0.4.21", optional = true, features = ["serde1"] }
 sqlx = { version = "0.9.1", optional = true, features = [ "any", "derive", "macros", "migrate", "uuid", "chrono", "bstr", "rust_decimal", "runtime-tokio", "tls-rustls-aws-lc-rs" ] }
 
 # Internal
-sawe_macros = { version = "0.1.0", path = "macros" }
+sawe_macros = { version = "0.1.1", path = "macros" }
