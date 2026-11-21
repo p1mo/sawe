@@ -37,7 +37,7 @@ impl Entry {
         Self { path, kind: EntryKind::Directory, status: Status::Embedded, content: None }
     }
 
-    pub fn embedded_file(path: PathBuf, bytes: Vec<u8>, codec: Codec) -> Self {
+    pub fn embedded_file(path: PathBuf, bytes: &'static [u8], codec: Codec) -> Self {
         Self {
             path,
             kind: EntryKind::File,
